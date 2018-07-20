@@ -3,10 +3,13 @@ from keras import Input, layers, Model
 
 def p_net():
     x = Input(shape=(12, 12, 3))
-    y = layers.Conv2D(10, 3, padding='valid', strides=(1, 1), activation='relu', name='p_conv1')(x)
+    y = layers.Conv2D(10, 3, padding='valid', strides=(1, 1), name='p_conv1')(x)
+    y = layers.PReLU(name='p_prelu1')(y)
     y = layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='p_max_pooling1')(y)
-    y = layers.Conv2D(16, 3, padding='valid', strides=(1, 1), activation='relu', name='p_conv2')(y)
-    y = layers.Conv2D(32, 3, padding='valid', strides=(1, 1), activation='relu', name='p_conv3')(y)
+    y = layers.Conv2D(16, 3, padding='valid', strides=(1, 1), name='p_conv2')(y)
+    y = layers.PReLU(name='p_prelu2')(y)
+    y = layers.Conv2D(32, 3, padding='valid', strides=(1, 1), name='p_conv3')(y)
+    y = layers.PReLU(name='p_prelu3')(y)
 
     classifier = layers.Conv2D(2, 1, activation='softmax', name='p_classifier')(y)
     bbox = layers.Conv2D(4, 1, name='p_bbox')(y)
@@ -19,12 +22,16 @@ def p_net():
 
 def r_net():
     x = Input(shape=(24, 24, 3))
-    y = layers.Conv2D(28, 3, padding='same', strides=(1, 1), activation='relu', name='r_conv1')(x)
+    y = layers.Conv2D(28, 3, padding='same', strides=(1, 1), name='r_conv1')(x)
+    y = layers.PReLU(name='r_prelu1')(y)
     y = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), name='p_max_pooling1')(y)
-    y = layers.Conv2D(48, 3, padding='valid', strides=(1, 1), activation='relu', name='r_conv2')(y)
+    y = layers.Conv2D(48, 3, padding='valid', strides=(1, 1), name='r_conv2')(y)
+    y = layers.PReLU(name='r_prelu2')(y)
     y = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), name='p_max_pooling2')(y)
-    y = layers.Conv2D(64, 2, padding='valid', activation='relu', name='r_conv3')(y)
-    y = layers.Dense(128, activation='relu', name='r_dense')(y)
+    y = layers.Conv2D(64, 2, padding='valid', name='r_conv3')(y)
+    y = layers.PReLU(name='r_prelu3')(y)
+    y = layers.Dense(128, name='r_dense')(y)
+    y = layers.PReLU(name='r_prelu4')(y)
     y = layers.Flatten()(y)
 
     classifier = layers.Dense(2, activation='softmax', name='r_classifier')(y)
@@ -38,14 +45,19 @@ def r_net():
 
 def o_net():
     x = Input(shape=(48, 48, 3))
-    y = layers.Conv2D(32, 3, padding='same', strides=(1, 1), activation='relu', name='o_conv1')(x)
+    y = layers.Conv2D(32, 3, padding='same', strides=(1, 1), name='o_conv1')(x)
+    y = layers.PReLU(name='o_prelu1')(y)
     y = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), name='o_max_pooling1')(y)
-    y = layers.Conv2D(64, 3, padding='valid', strides=(1, 1), activation='relu', name='o_conv2')(y)
+    y = layers.Conv2D(64, 3, padding='valid', strides=(1, 1), name='o_conv2')(y)
+    y = layers.PReLU(name='o_prelu2')(y)
     y = layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), name='o_max_pooling2')(y)
-    y = layers.Conv2D(64, 3, padding='valid', strides=(1, 1), activation='relu', name='o_conv3')(y)
+    y = layers.Conv2D(64, 3, padding='valid', strides=(1, 1), name='o_conv3')(y)
+    y = layers.PReLU(name='o_prelu3')(y)
     y = layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='o_max_pooling3')(y)
-    y = layers.Conv2D(128, 2, padding='valid', strides=(1, 1), activation='relu', name='o_conv4')(y)
-    y = layers.Dense(256, activation='relu', name='o_dense')(y)
+    y = layers.Conv2D(128, 2, padding='valid', strides=(1, 1), name='o_conv4')(y)
+    y = layers.PReLU(name='o_prelu4')(y)
+    y = layers.Dense(256, name='o_dense')(y)
+    y = layers.PReLU(name='o_prelu5')(y)
     y = layers.Flatten()(y)
 
     classifier = layers.Dense(2, activation='softmax', name='o_classifier')(y)
