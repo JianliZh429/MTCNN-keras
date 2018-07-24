@@ -1,14 +1,19 @@
 import datetime
 import os
 
+from keras import Model, layers
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.optimizers import Adam
 
 from mtcnn import p_net
 
-LOG_DIR = os.path.join(os.path.dirname(__file__), 'logs')
+LOG_DIR = os.path.join(os.path.dirname(__file__), '../logs')
 P_NET = p_net()
 MODES = ['label', 'bbox', 'landmark']
+
+
+def create_checkpoint():
+    pass
 
 
 def create_callbacks_model_file(prefix, epochs):
@@ -20,32 +25,45 @@ def create_callbacks_model_file(prefix, epochs):
     tensor_board = TensorBoard(log_dir=log_dir)
     model_file_path = '{}/{}_{}_{}.h5'.format(log_dir, prefix, epochs, filename)
 
-    checkpoint = ModelCheckpoint(model_file_path, verbose=1, save_best_only=True,
-                                 save_weights_only=False, mode='min', period=1)
+    checkpoint = ModelCheckpoint(model_file_path, verbose=0, save_weights_only=True)
     return [checkpoint, tensor_board], model_file_path
 
 
-def train_p_net(train_x, train_y, mode='label', batch_size=100, epochs=1000, learning_rate=0.001):
+# callback_list,  = create_callbacks_model_file('p_net', epochs)
+
+def train_p_net(train_x, train_y, mode='label', batch_size=100, initial_epoch=0, epochs=1, learning_rate=0.001,
+                callbacks=None):
     assert mode in MODES
-    losses = {'p_classifier': 'binary_crossentropy'}
-    metrics = {'p_classifier': 'accuracy'}
-    train_y_true = {'p_classifier': train_y[0]}
-    if mode == MODES[1]:
-        losses['p_bbox'] = 'mean_squared_error'
-        metrics['p_bbox'] = 'accuracy'
-        train_y_true['p_bbox'] = train_y[1]
+    optimazer = Adam(lr=learning_rate)
+    if mode == MODES[0]:
+        classifier_layer = P_NET.get_layer('p_classifier')
+        x = classifier_layer.output
+        x = layers.Reshape((2,), name='p_classifier1')(x)
 
-    if mode == MODES[2]:
-        losses['p_bbox'] = 'mean_squared_error'
-        metrics['p_bbox'] = 'accuracy'
-        train_y_true['p_bbox'] = train_y[1]
+        model = Model(inputs=[P_NET.input], outputs=[x])
+        model.compile(optimazer, loss='binary_crossentropy', metrics=['accuracy'])
 
-        losses['p_landmark'] = 'mean_squared_error'
-        metrics['p_landmark'] = 'accuracy'
-        train_y_true['p_landmark'] = train_y[2]
+    elif mode == MODES[1]:
+        bbox_layer = P_NET.get_layer('p_bbox')
+        x = bbox_layer.output
+        x = layers.Reshape((4,), name='p_bbox1')(x)
+        model = Model(inputs=[P_NET.input], outputs=[x])
+        model.compile(optimazer, loss='mean_squared_error', metrics=['accuracy'])
+    elif mode == MODES[2]:
+        landmark_layer = P_NET.get_layer('p_landmark')
+        x = landmark_layer.output
+        model = Model(inputs=[P_NET.input], outputs=[x])
+        model.compile(optimazer, loss='mean_squared_error', metrics=['accuracy'])
+    else:
+        raise ValueError('Unknown mode of "{}", must in {}'.format(mode, MODES))
 
-    callback_list, model_file = create_callbacks_model_file('p_net', epochs)
+    # model.summary()
 
-    P_NET.compile(optimizer=Adam(lr=learning_rate), loss=losses, metrics=metrics)
-    P_NET.fit(train_x, train_y_true, batch_size=batch_size, epochs=epochs, callbacks=callback_list, verbose=1)
-    P_NET.save(model_file)
+    model.fit(train_x, train_y,
+              batch_size=batch_size,
+              epochs=epochs,
+              initial_epoch=initial_epoch,
+              callbacks=callbacks,
+              validation_split=0.1,
+              verbose=1)
+    return model, P_NET

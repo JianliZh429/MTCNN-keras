@@ -105,3 +105,4 @@ venv.bak/
 .idea/
 logs/
 *.pkl
+*.h5
