@@ -2,51 +2,64 @@ import os
 import sys
 from argparse import ArgumentParser
 
-import numpy as np
 from keras import Model
 
-from train.data_loader import load_dataset
+from mtcnn import p_net
+from train.data_loader import load_label_dataset, load_bbox_dataset, load_landmark_dataset
 from train.train_net import train_p_net, create_callbacks_model_file
 
 
-def training(dataset_dir, batch_size, epochs, learning_rate):
+def training(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
     label_dataset_path = os.path.join(dataset_dir, 'label_p_net.pkl')
     bboxes_dataset_path = os.path.join(dataset_dir, 'bboxes_p_net.pkl')
-    label_dataset = load_dataset(label_dataset_path)
-    bbox_dataset = load_dataset(bboxes_dataset_path)
+    landmarks_dataset_path = os.path.join(dataset_dir, 'landmarks_p_net.pkl')
 
-    label_x = label_dataset['ims']
-    label_y = label_dataset['labels']
-    label_x = np.array(label_x)
-    label_y = np.array(label_y)
+    label_x, label_y = load_label_dataset(label_dataset_path)
+    bbox_x, bbox_y = load_bbox_dataset(bboxes_dataset_path)
+    landmark_x, landmark_y = load_landmark_dataset(landmarks_dataset_path)
 
-    bbox_x = bbox_dataset['ims']
-    bbox_y = bbox_dataset['bboxes']
-    bbox_x = np.array(bbox_x)
-    bbox_y = np.array(bbox_y)
+    _p_net = p_net()
+    if weights_file is not None:
+        _p_net.load_weights(weights_file)
 
-    _p_net = None
     label_weights = None
     bbox_weights = None
+    landmark_weights = None
     callbacks, model_file = create_callbacks_model_file('p_net', epochs)
+
+    sub_epochs_label = 1
+    sub_epochs_bbox = 1
+    sub_epochs_landmark = 1
+
     for i in range(epochs):
-        start = i * 4
-        end = start + 1
-        model, _p_net = train_p_net(label_x, label_y, 'label', batch_size, start, end, learning_rate, callbacks)
+        start = i * (sub_epochs_label + sub_epochs_bbox + sub_epochs_landmark)
+
+        end = start + sub_epochs_label
+        model, _p_net = train_p_net(_p_net, label_x, label_y, 'label', batch_size, start, end, learning_rate, callbacks)
         label_classifier = model.get_layer('p_classifier')
         label_weights = label_classifier.get_weights()
 
         start = end
-        end = start + 3
-        model, _p_net = train_p_net(bbox_x, bbox_y, 'bbox', batch_size, start, end, learning_rate, callbacks)
+        end = start + sub_epochs_bbox
+        model, _p_net = train_p_net(_p_net, bbox_x, bbox_y, 'bbox', batch_size, start, end, learning_rate, callbacks)
         bbox_layer = model.get_layer('p_bbox')
         bbox_weights = bbox_layer.get_weights()
 
-    model = Model([_p_net.input], [_p_net.get_layer('p_classifier').output, _p_net.get_layer('p_bbox').output])
+        start = end
+        end = start + sub_epochs_landmark
+        model, _p_net = train_p_net(_p_net, landmark_x, landmark_y, 'landmark',
+                                    batch_size, start, end, learning_rate, callbacks)
+        landmark_layer = model.get_layer('p_landmark')
+        landmark_weights = landmark_layer.get_weights()
+
+    model = Model([_p_net.input], [_p_net.get_layer('p_classifier').output,
+                                   _p_net.get_layer('p_bbox').output,
+                                   _p_net.get_layer('p_landmark')])
     model.summary()
 
     model.get_layer('p_classifier').set_weights(label_weights)
     model.get_layer('p_bbox').set_weights(bbox_weights)
+    model.get_layer('p_landmark').set_weights(landmark_weights)
 
     model.save_weights(model_file)
 
@@ -57,6 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size of training')
     parser.add_argument('--epochs', type=int, default=1000, help='Epochs to train')
     parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate while training')
+    parser.add_argument('--weights', type=str, default=None, help='Init weights to load')
     args = parser.parse_args(sys.argv[1:])
 
     training(args.dataset, args.batch_size, args.epochs, args.learning_rate)

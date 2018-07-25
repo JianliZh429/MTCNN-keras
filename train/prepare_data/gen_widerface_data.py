@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 import numpy.random as npr
 
-from train.config import net_size
+from train.config import NET_SIZE
 from train.utils import iou
 
 CURR_DIR = os.path.dirname(__file__)
@@ -27,7 +27,7 @@ def main(args):
     anno_file = args.annotation_file
     out_dir = args.out_dir
 
-    target_size = net_size[net_name]
+    target_size = NET_SIZE[net_name]
     save_dir = '{}/{}'.format(out_dir, net_name)
 
     pos_save_dir = save_dir + '/positive'
