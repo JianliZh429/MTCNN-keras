@@ -42,10 +42,10 @@ def main(args):
 
 
 def create_landmark_dataset(net_name, landmark_anno, target_size, out_dir):
-    total_landmarks = len(landmark_anno)
     ims = []
     landmarks = []
-    bar = Bar('Create landmark dataset', max=total_landmarks)
+    labels = []
+    bar = Bar('Create landmark dataset', max=len(landmark_anno))
     for line in landmark_anno:
         bar.next()
 
@@ -57,31 +57,34 @@ def create_landmark_dataset(net_name, landmark_anno, target_size, out_dir):
         im = im.astype('uint8')
         ims.append(im)
 
+        labels.append(words[1])
+
         landmark = words[2:12]
         landmark = list(map(float, landmark))
 
         landmarks.append(landmark)
 
-    landmark_data = list(zip(ims, landmarks))
+    landmark_data = list(zip(labels, ims, landmarks))
     random.shuffle(landmark_data)
-    ims, landmarks = zip(*landmark_data)
+    labels, ims, landmarks = zip(*landmark_data)
 
     landmark_data_filename = os.path.join(out_dir, 'landmarks_{}.pkl'.format(net_name))
 
     with open(landmark_data_filename, 'wb') as f:
-        pickle.dump({'ims': ims, 'landmarks': landmarks}, f)
+        pickle.dump({'labels': labels, 'ims': ims, 'landmarks': landmarks}, f)
 
     bar.finish()
     print('landmarks data done, total: {}'.format(len(ims)))
 
 
 def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
-    total_pos = len(pos)
-    total_part = len(part)
     ims = []
     labels = []
     bboxes = []
-    bar = Bar('Create bbox dataset', max=total_pos + total_part)
+
+    part_stay = np.random.choice(len(part), size=200000, replace=False)
+
+    bar = Bar('Create bbox dataset', max=len(pos) + len(part_stay))
     for line in pos:
         bar.next()
 
@@ -92,12 +95,11 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
         im = im.astype('uint8')
         ims.append(im)
 
-        labels.append(np.array([0, 1]))
+        labels.append(int(words[1]))
 
         box = np.array([float(words[2]), float(words[3]), float(words[4]), float(words[5])], dtype='float32')
         bboxes.append(box)
 
-    part_stay = np.random.choice(len(part), size=200000, replace=False)
     for i in part_stay:
         bar.next()
 
@@ -109,7 +111,7 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
         im = im.astype('uint8')
         ims.append(im)
 
-        labels.append(np.array([0, 0]))
+        labels.append(int(words[1]))
 
         box = np.array([float(words[2]), float(words[3]), float(words[4]), float(words[5])], dtype='float32')
         bboxes.append(box)
@@ -126,23 +128,22 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
 
 
 def create_label_dataset(net_name, neg, pos, target_size, out_dir):
-    total_pos = len(pos)
-    total_neg = len(neg)
     ims = []
     labels = []
-    bar = Bar('Create label dataset', max=total_pos + total_neg)
+
+    neg_stay = np.random.choice(len(neg), size=600000, replace=False)
+
+    bar = Bar('Create label dataset', max=len(pos) + len(neg_stay))
     for line in pos:
         bar.next()
-
         words = line.split()
         image_file_name = words[0] + '.jpg'
         im = cv2.imread(image_file_name)
         im = resize(im, target_size=target_size)
         im = im.astype(np.int8)
         ims.append(im)
-        labels.append(np.array([0, 1]))
+        labels.append(int(words[1]))
 
-    neg_stay = np.random.choice(total_neg, size=600000, replace=False)
     for i in neg_stay:
         bar.next()
 
@@ -154,7 +155,7 @@ def create_label_dataset(net_name, neg, pos, target_size, out_dir):
         im = resize(im, target_size=target_size)
         im = im.astype(np.int8)
         ims.append(im)
-        labels.append(np.array([1, 0]))
+        labels.append(int(words[1]))
 
     label_data = list(zip(ims, labels))
     random.shuffle(label_data)

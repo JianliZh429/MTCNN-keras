@@ -2,11 +2,23 @@ import os
 import sys
 from argparse import ArgumentParser
 
-from keras import Model
-
 from mtcnn import p_net
-from train.data_loader import load_label_dataset, load_bbox_dataset, load_landmark_dataset
-from train.train_net import train_p_net, create_callbacks_model_file
+from train.data_loader import load_label_dataset, load_bbox_dataset, load_landmark_dataset, load_dataset
+from train.train_net import train_p_net, train_p_net_, create_callbacks_model_file
+
+
+def training_(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
+    label_dataset_path = os.path.join(dataset_dir, 'label_p_net.pkl')
+    bboxes_dataset_path = os.path.join(dataset_dir, 'bboxes_p_net.pkl')
+    landmarks_dataset_path = os.path.join(dataset_dir, 'landmarks_p_net.pkl')
+    images_x, labels_y, bboxes_y, landmarks_y = load_dataset(label_dataset_path, bboxes_dataset_path,
+                                                             landmarks_dataset_path)
+
+    callbacks, model_file = create_callbacks_model_file('p_net', epochs)
+    _p_net = train_p_net_(images_x, labels_y, bboxes_y, landmarks_y, batch_size, initial_epoch=0, epochs=epochs,
+                          lr=learning_rate, callbacks=callbacks)
+
+    _p_net.save_weights(model_file)
 
 
 def training(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
@@ -52,16 +64,13 @@ def training(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
         landmark_layer = model.get_layer('p_landmark')
         landmark_weights = landmark_layer.get_weights()
 
-    model = Model([_p_net.input], [_p_net.get_layer('p_classifier').output,
-                                   _p_net.get_layer('p_bbox').output,
-                                   _p_net.get_layer('p_landmark')])
-    model.summary()
+    _p_net.summary()
 
-    model.get_layer('p_classifier').set_weights(label_weights)
-    model.get_layer('p_bbox').set_weights(bbox_weights)
-    model.get_layer('p_landmark').set_weights(landmark_weights)
-
-    model.save_weights(model_file)
+    _p_net.get_layer('p_classifier').set_weights(label_weights)
+    _p_net.get_layer('p_bbox').set_weights(bbox_weights)
+    _p_net.get_layer('p_landmark').set_weights(landmark_weights)
+    print('Save model to: {}'.format(model_file))
+    _p_net.save_weights(model_file)
 
 
 if __name__ == '__main__':
@@ -73,4 +82,4 @@ if __name__ == '__main__':
     parser.add_argument('--weights', type=str, default=None, help='Init weights to load')
     args = parser.parse_args(sys.argv[1:])
 
-    training(args.dataset, args.batch_size, args.epochs, args.learning_rate)
+    training_(args.dataset, args.batch_size, args.epochs, args.learning_rate)

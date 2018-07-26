@@ -1,8 +1,8 @@
 from keras import Input, layers, Model
 
 
-def p_net():
-    x = Input(shape=(12, 12, 3))
+def p_net(training=False):
+    x = Input(shape=(12, 12, 3)) if training else Input(shape=(None, None, 3))
     y = layers.Conv2D(10, 3, padding='valid', strides=(1, 1), name='p_conv1')(x)
     y = layers.PReLU(name='p_prelu1')(y)
     y = layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='p_max_pooling1')(y)
@@ -14,6 +14,11 @@ def p_net():
     classifier = layers.Conv2D(2, 1, activation='softmax', name='p_classifier')(y)
     bbox = layers.Conv2D(4, 1, name='p_bbox')(y)
     landmark = layers.Conv2D(10, 1, padding='valid', name='p_landmark')(y)
+
+    if training:
+        classifier = layers.Reshape(2, name='p_classifier1')(classifier)
+        bbox = layers.Reshape(4, name='p_bbox1')(bbox)
+        landmark = layers.Reshape(10, name='p_bbox1')(landmark)
 
     model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='P_Net')
 
