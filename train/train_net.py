@@ -32,7 +32,7 @@ def train_p_net_(inputs_image, labels, bboxes, landmarks, batch_size, initial_ep
         _p_net.load_weights(weights_file)
 
     losses = {
-        'p_classifier1': 'binary_crossentropy',
+        'p_classifier1': 'categorical_crossentropy',
         'p_bbox1': 'mean_squared_error',
         'p_landmark1': 'mean_squared_error'
     }
