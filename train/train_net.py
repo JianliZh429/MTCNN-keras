@@ -25,26 +25,23 @@ def create_callbacks_model_file(prefix, epochs):
 
 
 def train_p_net_(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
-                callbacks=None):
+                 callbacks=None, weights_file=None):
     _p_net = p_net(training=True)
+    _p_net.summary()
+    if weights_file is not None:
+        _p_net.load_weights(weights_file)
 
     losses = {
-        'p_classifier': 'binary_crossentropy',
-        'p_bbox': 'mean_squared_error',
-        'p_landmark': 'mean_squared_error'
+        'p_classifier1': 'binary_crossentropy',
+        'p_bbox1': 'mean_squared_error',
+        'p_landmark1': 'mean_squared_error'
     }
-    # metrics = {
-    #     'p_classifier': 'accuracy',
-    #     'p_bbox': 'accuracy',
-    #     'p_landmark': 'accuracy',
-    #
-    # }
-
-    _p_net.compile(Adam(lr=lr), loss=losses, metrics=['accuracy'])
+    
+    _p_net.compile(Adam(lr=lr), loss=losses, metrics=['accuracy'],
+                   loss_weights={'p_classifier1': 1., 'p_bbox1': 0.5, 'p_landmark1': 0.5})
     _p_net.fit(
         inputs_image,
-        {'p_classifier': labels, 'p_bbox': bboxes, 'p_landmark': landmarks},
-        loss_weights={'p_classifier': 1., 'p_bbox': 0.5, 'p_landmark': 0.5},
+        {'p_classifier1': labels, 'p_bbox1': bboxes, 'p_landmark1': landmarks},
         batch_size=batch_size,
         initial_epoch=initial_epoch,
         epochs=epochs,
@@ -52,6 +49,7 @@ def train_p_net_(inputs_image, labels, bboxes, landmarks, batch_size, initial_ep
         verbose=1
     )
     return _p_net
+
 
 def train_p_net(p_net_, train_x, train_y, mode='label', batch_size=100, initial_epoch=0, epochs=1,
                 learning_rate=0.001, callbacks=None):

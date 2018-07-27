@@ -16,9 +16,9 @@ def p_net(training=False):
     landmark = layers.Conv2D(10, 1, padding='valid', name='p_landmark')(y)
 
     if training:
-        classifier = layers.Reshape(2, name='p_classifier1')(classifier)
-        bbox = layers.Reshape(4, name='p_bbox1')(bbox)
-        landmark = layers.Reshape(10, name='p_bbox1')(landmark)
+        classifier = layers.Reshape((2,), name='p_classifier1')(classifier)
+        bbox = layers.Reshape((4,), name='p_bbox1')(bbox)
+        landmark = layers.Reshape((10,), name='p_landmark1')(landmark)
 
     model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='P_Net')
 
