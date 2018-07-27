@@ -50,3 +50,27 @@ def rotate(img, bbox, landmark, alpha):
                              rot_mat[1][0] * x + rot_mat[1][1] * y + rot_mat[1][2]) for (x, y) in landmark])
     face = img_rotated_by_alpha[y1:y2 + 1, x1:x2 + 1]
     return face, landmark_
+
+
+def bbox_2_square(bbox):
+    """Convert bbox to square
+
+        Parameters:
+        ----------
+        bbox: numpy array , shape n x 5
+            input bbox
+
+        Returns:
+        -------
+        square bbox
+        """
+    square_bbox = bbox.copy()
+
+    h = bbox[:, 3] - bbox[:, 1] + 1
+    w = bbox[:, 2] - bbox[:, 0] + 1
+    max_side = np.maximum(h, w)
+    square_bbox[:, 0] = bbox[:, 0] + w * 0.5 - max_side * 0.5
+    square_bbox[:, 1] = bbox[:, 1] + h * 0.5 - max_side * 0.5
+    square_bbox[:, 2] = square_bbox[:, 0] + max_side - 1
+    square_bbox[:, 3] = square_bbox[:, 1] + max_side - 1
+    return square_bbox
