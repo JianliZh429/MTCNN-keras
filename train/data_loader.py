@@ -14,8 +14,8 @@ def _process_im(im):
     return (im.astype(np.float32) - 127.5) / 128
 
 
-def load_dataset(label_dataset_path, bbox_dataset_path, landmark_dataset_path):
-    images_x = np.empty((0, 12, 12, 3))
+def load_dataset(label_dataset_path, bbox_dataset_path, landmark_dataset_path, im_size=12):
+    images_x = np.empty((0, im_size, im_size, 3))
     labels_y = np.empty((0,))
     bboxes_y = np.empty((0, 4))
     landmarks_y = np.empty((0, 10))
@@ -36,10 +36,10 @@ def load_dataset(label_dataset_path, bbox_dataset_path, landmark_dataset_path):
     landmarks_y = np.concatenate((landmarks_y, np.zeros((len_labels, 10), np.float32)), axis=0)
 
     landmark_x, landmark_y, l_label_y = load_landmark_dataset(landmark_dataset_path)
-    len_labels = len(l_label_y)
+    # len_labels = len(l_label_y)
     images_x = np.concatenate((images_x, landmark_x), axis=0)
     labels_y = np.concatenate((labels_y, l_label_y), axis=0)
-    bboxes_y = np.concatenate((bboxes_y, np.zeros((len_labels, 4), np.float32)), axis=0)
+    bboxes_y = np.concatenate((bboxes_y, np.array([0, 0, im_size - 1, im_size - 1], np.float32)), axis=0)
     landmarks_y = np.concatenate((landmarks_y, landmark_y), axis=0)
 
     assert len(images_x) == len(labels_y) == len(bboxes_y) == len(landmarks_y)
