@@ -1,7 +1,8 @@
 import pickle
 
 import numpy as np
-from keras.utils import to_categorical
+
+from .config import LABEL_MAP
 
 
 def _load_pickle(dataset_path):
@@ -14,13 +15,10 @@ def _process_im(im):
     return (im.astype(np.float32) - 127.5) / 128
 
 
-label_map = {'0': [0, 1], '1': [1, 0], '-1': [0, 0], '-2': [1, 1]}
-
-
 def _process_label(labels):
     label = []
     for ll in labels:
-        label.append(label_map.get(str(ll)))
+        label.append(LABEL_MAP.get(str(ll)))
     return label
 
 
