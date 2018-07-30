@@ -19,9 +19,10 @@ def p_net(training=False):
         classifier = layers.Reshape((2,), name='p_classifier1')(classifier)
         bbox = layers.Reshape((4,), name='p_bbox1')(bbox)
         landmark = layers.Reshape((10,), name='p_landmark1')(landmark)
-
-    model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='P_Net')
-
+        outputs = layers.concatenate([classifier, bbox, landmark])
+        model = Model(inputs=[x], outputs=[outputs], name='P_Net')
+    else:
+        model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='P_Net')
     return model
 
 

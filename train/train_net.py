@@ -1,8 +1,9 @@
 import datetime
 import os
 
-from keras import Model, layers
+import numpy as np
 from keras.callbacks import TensorBoard, ModelCheckpoint
+from keras.losses import mean_squared_error
 from keras.optimizers import Adam
 
 from mtcnn import p_net
@@ -26,66 +27,21 @@ def create_callbacks_model_file(prefix, epochs):
 
 def train_p_net_(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
                  callbacks=None, weights_file=None):
+    def loss_func(y_true, y_pred):
+
+        return mean_squared_error(y_true, y_pred)
+
+    y = np.concatenate((labels, bboxes, landmarks), axis=1)
     _p_net = p_net(training=True)
     _p_net.summary()
     if weights_file is not None:
         _p_net.load_weights(weights_file)
 
-    losses = {
-        'p_classifier1': 'categorical_crossentropy',
-        'p_bbox1': 'mean_squared_error',
-        'p_landmark1': 'mean_squared_error'
-    }
-    
-    _p_net.compile(Adam(lr=lr), loss=losses, metrics=['accuracy'],
-                   loss_weights={'p_classifier1': 1., 'p_bbox1': 0.5, 'p_landmark1': 0.5})
-    _p_net.fit(
-        inputs_image,
-        {'p_classifier1': labels, 'p_bbox1': bboxes, 'p_landmark1': landmarks},
-        batch_size=batch_size,
-        initial_epoch=initial_epoch,
-        epochs=epochs,
-        callbacks=callbacks,
-        verbose=1
-    )
+    _p_net.compile(Adam(lr=lr), loss=loss_func, metrics=['accuracy'])
+    _p_net.fit(inputs_image, y,
+               batch_size=batch_size,
+               initial_epoch=initial_epoch,
+               epochs=epochs,
+               callbacks=callbacks,
+               verbose=1)
     return _p_net
-
-
-def train_p_net(p_net_, train_x, train_y, mode='label', batch_size=100, initial_epoch=0, epochs=1,
-                learning_rate=0.001, callbacks=None):
-    assert mode in MODES
-    optimizer = Adam(lr=learning_rate)
-    if mode == MODES[0]:
-        classifier_layer = p_net_.get_layer('p_classifier')
-        x = classifier_layer.output
-        x = layers.Reshape((2,), name='p_classifier1')(x)
-
-        model = Model(inputs=[p_net_.input], outputs=[x])
-        model.compile(optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-
-    elif mode == MODES[1]:
-        bbox_layer = p_net_.get_layer('p_bbox')
-        x = bbox_layer.output
-        x = layers.Reshape((4,), name='p_bbox1')(x)
-        model = Model(inputs=[p_net_.input], outputs=[x])
-        model.compile(optimizer, loss='mean_squared_error', metrics=['accuracy'])
-
-    elif mode == MODES[2]:
-        landmark_layer = p_net_.get_layer('p_landmark')
-        x = landmark_layer.output
-        x = layers.Reshape((10,), name='p_landmark1')(x)
-        model = Model(inputs=[p_net_.input], outputs=[x])
-        model.compile(optimizer, loss='mean_squared_error', metrics=['accuracy'])
-    else:
-        raise ValueError('Unknown mode of "{}", must in {}'.format(mode, MODES))
-
-    # model.summary()
-
-    model.fit(train_x, train_y,
-              batch_size=batch_size,
-              epochs=epochs,
-              initial_epoch=initial_epoch,
-              callbacks=callbacks,
-              validation_split=0.1,
-              verbose=1)
-    return model, p_net_
