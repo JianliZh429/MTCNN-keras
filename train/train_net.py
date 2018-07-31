@@ -58,35 +58,49 @@ def cal_mask(label_true, _type='label'):
 
 def label_ohem(label_true, label_pred):
     mask = cal_mask(label_true, 'label')
+    num = tf.reduce_sum(mask)
+    keep_num = tf.cast(tf.cast(num, dtype=tf.float32) * num_keep_radio, dtype=tf.int32)
+
     label_true1 = tf.boolean_mask(label_true, mask)
     label_pred1 = tf.boolean_mask(label_pred, mask)
 
     label_loss = categorical_crossentropy(label_true1, label_pred1)
-
-    num = tf.reduce_sum(mask)
-    # keep_num = tf.cast(tf.multiply(tf.cast(num, dtype=tf.float32), num_keep_radio), dtype=tf.int32)
-
-    label_loss = label_loss * tf.cast(num, dtype=tf.float32)
-    # label_loss = tf.nn.top_k(label_loss, k=keep_num)
+    label_loss, _ = tf.nn.top_k(label_loss, k=keep_num)
     return tf.reduce_mean(label_loss)
 
 
 def bbox_ohem(label_true, bbox_true, bbox_pred):
     mask = cal_mask(label_true, 'bbox')
+    num = tf.reduce_sum(mask)
+    keep_num = tf.cast(num, dtype=tf.int32)
 
     bbox_true1 = tf.boolean_mask(bbox_true, mask, axis=0)
     bbox_pred1 = tf.boolean_mask(bbox_pred, mask, axis=0)
 
-    return tf.losses.mean_squared_error(bbox_true1, bbox_pred1)
+    square_error = tf.square(bbox_pred1 - bbox_true1)
+    square_error = tf.reduce_sum(square_error, axis=1)
+
+    _, k_index = tf.nn.top_k(square_error, k=keep_num)
+    square_error = tf.gather(square_error, k_index)
+
+    return tf.reduce_mean(square_error)
 
 
 def landmark_ohem(label_true, landmark_true, landmark_pred):
     mask = cal_mask(label_true, 'landmark')
+    num = tf.reduce_sum(mask)
+    keep_num = tf.cast(num, dtype=tf.int32)
 
     landmark_true1 = tf.boolean_mask(landmark_true, mask)
     landmark_pred1 = tf.boolean_mask(landmark_pred, mask)
 
-    return tf.losses.mean_squared_error(landmark_true1, landmark_pred1)
+    square_error = tf.square(landmark_pred1 - landmark_true1)
+    square_error = tf.reduce_sum(square_error, axis=1)
+
+    _, k_index = tf.nn.top_k(square_error, k=keep_num)
+    square_error = tf.gather(square_error, k_index)
+
+    return tf.reduce_mean(square_error)
 
 
 def p_net_loss(y_true, y_pred):
