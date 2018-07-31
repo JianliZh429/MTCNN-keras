@@ -34,35 +34,45 @@ def create_callbacks_model_file(prefix, epochs):
     return [checkpoint, tensor_board], model_file_path
 
 
-def label_ohem(label_true, label_pred):
-    zeros = tf.zeros_like(label_true)
-    ones = tf.zeros_like(label_true)
+def cal_mask(label_true, _type='label'):
+    def true_func():
+        return 0
 
-    cond = tf.logical_or(tf.equal(label_true, PARTIAL), tf.equal(label_true, LANDMARK))
-    label_filtered = tf.where(cond, zeros, ones)
+    def false_func():
+        return 1
+
+    label_true_int32 = tf.cast(label_true, dtype=tf.int32)
+    if _type == 'label':
+        label_filtered = tf.map_fn(lambda x: tf.cond(tf.equal(x[0], x[1]), true_func, false_func), label_true_int32)
+    elif _type == 'bbox':
+        label_filtered = tf.map_fn(lambda x: tf.cond(tf.equal(x[0], 1), true_func, false_func), label_true_int32)
+    elif _type == 'landmark':
+        label_filtered = tf.map_fn(lambda x: tf.cond(tf.logical_and(tf.equal(x[0], 1), tf.equal(x[1], 1)),
+                                                     false_func, true_func), label_true_int32)
+    else:
+        raise ValueError('Unknown type of: {} while calculate mask'.format(_type))
+
     mask = tf.cast(label_filtered, dtype=tf.int32)
+    return mask
 
-    num = tf.reduce_sum(mask)
 
-    keep_num = tf.cast(tf.multiply(tf.cast(num, dtype=tf.float32), num_keep_radio), dtype=tf.float32)
-
-    mask = tf.cast(label_filtered, dtype=tf.bool)
+def label_ohem(label_true, label_pred):
+    mask = cal_mask(label_true, 'label')
     label_true1 = tf.boolean_mask(label_true, mask)
     label_pred1 = tf.boolean_mask(label_pred, mask)
 
     label_loss = categorical_crossentropy(label_true1, label_pred1)
-    label_loss = label_loss * keep_num
+
+    num = tf.reduce_sum(mask)
+    # keep_num = tf.cast(tf.multiply(tf.cast(num, dtype=tf.float32), num_keep_radio), dtype=tf.int32)
+
+    label_loss = label_loss * tf.cast(num, dtype=tf.float32)
+    # label_loss = tf.nn.top_k(label_loss, k=keep_num)
     return tf.reduce_mean(label_loss)
 
 
 def bbox_ohem(label_true, bbox_true, bbox_pred):
-    zeros = tf.zeros_like(label_true)
-    ones = tf.zeros_like(label_true)
-
-    cond = tf.logical_or(tf.equal(label_true, NEGATIVE), tf.equal(label_true, LANDMARK))
-    label_filtered = tf.where(cond, zeros, ones)
-    mask = tf.cast(label_filtered, dtype=tf.bool)
-    mask = tf.map_fn(lambda x: tf.logical_and(x[0], x[1]), mask)
+    mask = cal_mask(label_true, 'bbox')
 
     bbox_true1 = tf.boolean_mask(bbox_true, mask, axis=0)
     bbox_pred1 = tf.boolean_mask(bbox_pred, mask, axis=0)
@@ -71,12 +81,7 @@ def bbox_ohem(label_true, bbox_true, bbox_pred):
 
 
 def landmark_ohem(label_true, landmark_true, landmark_pred):
-    zeros = tf.zeros_like(label_true)
-    ones = tf.zeros_like(label_true)
-    label_filtered = tf.where(tf.equal(label_true, LANDMARK), ones, zeros)
-    mask = tf.cast(label_filtered, dtype=tf.int8)
-    mask = tf.map_fn(lambda x: x[0] * x[1], mask)
-    mask = tf.cast(mask, dtype=tf.bool)
+    mask = cal_mask(label_true, 'landmark')
 
     landmark_true1 = tf.boolean_mask(landmark_true, mask)
     landmark_pred1 = tf.boolean_mask(landmark_pred, mask)
