@@ -12,7 +12,7 @@ class Detector:
         self.stride = stride
 
         p_weights, r_weights, o_weights = load_weights(weight_dir)
-
+        print('PNet weight file is: {}'.format(p_weights))
         self.p_net = p_net()
         self.p_net.load_weights(p_weights)
 
@@ -26,18 +26,12 @@ class Detector:
     def predict(self, images):
         if not self.slide_window:
             im_batch = np.array(images)
-
             return self.predict_with_p_net(im_batch)
         else:
             raise NotImplementedError('Not implemented yet')
 
     def predict_with_p_net(self, im_batch):
-        labels = [], bboxes = [], landmarks = []
-        for im in im_batch:
-            label, bbox, landmark = self.p_net.predict(im)
-            labels.append(label)
-            bboxes.append(bbox)
-            landmarks.append(landmark)
+        labels, bboxes, landmarks = self.p_net.predict(im_batch)
         return labels, bboxes, landmarks
 
     def _predict_with_slide_window(self, im_batch):
