@@ -5,7 +5,6 @@ import keras.backend.tensorflow_backend as TK
 import numpy as np
 import tensorflow as tf
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.losses import categorical_crossentropy
 from keras.optimizers import Adam
 
 from mtcnn import p_net
@@ -57,16 +56,27 @@ def cal_mask(label_true, _type='label'):
 
 
 def label_ohem(label_true, label_pred):
-    mask = cal_mask(label_true, 'label')
-    num = tf.reduce_sum(mask)
-    keep_num = tf.cast(tf.cast(num, dtype=tf.float32) * num_keep_radio, dtype=tf.int32)
+    label_int = cal_mask(label_true, 'label')
 
-    label_true1 = tf.boolean_mask(label_true, mask)
-    label_pred1 = tf.boolean_mask(label_pred, mask)
+    num_cls_prob = tf.size(label_pred)
+    print('num_cls_prob: ', num_cls_prob)
+    cls_prob_reshape = tf.reshape(label_pred, [num_cls_prob, -1])
+    print('label_pred shape: ', tf.shape(label_pred))
+    num_row = tf.shape(label_pred)[0]
+    num_row = tf.to_int32(num_row)
+    row = tf.range(num_row) * 2
+    indices_ = row + label_int
+    label_prob = tf.squeeze(tf.gather(cls_prob_reshape, indices_))
+    loss = -tf.log(label_prob + 1e-10)
 
-    label_loss = categorical_crossentropy(label_true1, label_pred1)
-    label_loss, _ = tf.nn.top_k(label_loss, k=keep_num)
-    return tf.reduce_mean(label_loss)
+    valid_inds = cal_mask(label_true, 'label')
+    num_valid = tf.reduce_sum(valid_inds)
+
+    keep_num = tf.cast(tf.cast(num_valid, dtype=tf.float32) * num_keep_radio, dtype=tf.int32)
+    # set 0 to invalid sample
+    loss = loss * tf.cast(valid_inds, dtype=tf.float32)
+    loss, _ = tf.nn.top_k(loss, k=keep_num)
+    return tf.reduce_mean(loss)
 
 
 def bbox_ohem(label_true, bbox_true, bbox_pred):
