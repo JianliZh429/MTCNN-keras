@@ -26,7 +26,7 @@ def p_net(training=False):
     return model
 
 
-def r_net():
+def r_net(training=False):
     x = Input(shape=(24, 24, 3))
     y = layers.Conv2D(28, 3, padding='same', strides=(1, 1), name='r_conv1')(x)
     y = layers.PReLU(shared_axes=(1, 2), name='r_prelu1')(y)
@@ -44,7 +44,14 @@ def r_net():
     bbox = layers.Dense(4, name='r_bbox')(y)
     landmark = layers.Dense(10, name='r_landmark')(y)
 
-    model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='R_Net')
+    if training:
+        # classifier = layers.Reshape((2,), name='r_classifier1')(classifier)
+        # bbox = layers.Reshape((4,), name='r_bbox1')(bbox)
+        # landmark = layers.Reshape((10,), name='r_landmark1')(landmark)
+        outputs = layers.concatenate([classifier, bbox, landmark])
+        model = Model(inputs=[x], outputs=[outputs], name='R_Net')
+    else:
+        model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='R_Net')
 
     return model
 

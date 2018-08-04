@@ -7,7 +7,7 @@ import tensorflow as tf
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.optimizers import Adam
 
-from mtcnn import p_net
+from mtcnn import p_net, r_net
 from .config import LABEL_MAP
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), '../logs')
@@ -113,7 +113,7 @@ def landmark_ohem(label_true, landmark_true, landmark_pred):
     return tf.reduce_mean(square_error)
 
 
-def p_net_loss(y_true, y_pred):
+def _loss_func(y_true, y_pred):
     labels_true = y_true[:, :2]
     bbox_true = y_true[:, 2:6]
     landmark_true = y_true[:, 6:]
@@ -129,15 +129,15 @@ def p_net_loss(y_true, y_pred):
     return label_loss + bbox_loss * 0.5 + landmark_loss * 0.5
 
 
-def train_p_net_(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
-                 callbacks=None, weights_file=None):
+def train_p_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+                callbacks=None, weights_file=None):
     y = np.concatenate((labels, bboxes, landmarks), axis=1)
     _p_net = p_net(training=True)
     _p_net.summary()
     if weights_file is not None:
         _p_net.load_weights(weights_file)
 
-    _p_net.compile(Adam(lr=lr), loss=p_net_loss, metrics=['accuracy'])
+    _p_net.compile(Adam(lr=lr), loss=_loss_func, metrics=['accuracy'])
     _p_net.fit(inputs_image, y,
                batch_size=batch_size,
                initial_epoch=initial_epoch,
@@ -145,3 +145,21 @@ def train_p_net_(inputs_image, labels, bboxes, landmarks, batch_size, initial_ep
                callbacks=callbacks,
                verbose=1)
     return _p_net
+
+
+def train_r_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+                callbacks=None, weights_file=None):
+    y = np.concatenate((labels, bboxes, landmarks), axis=1)
+    _r_net = r_net(training=True)
+    _r_net.summary()
+    if weights_file is not None:
+        _r_net.load_weights(weights_file)
+
+    _r_net.compile(Adam(lr=lr), loss=_loss_func, metrics=['accuracy'])
+    _r_net.fit(inputs_image, y,
+               batch_size=batch_size,
+               initial_epoch=initial_epoch,
+               epochs=epochs,
+               callbacks=callbacks,
+               verbose=1)
+    return _r_net

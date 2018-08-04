@@ -8,17 +8,18 @@ from mtcnn.detector import Detector
 
 
 def main(weight_dir, image_file):
-    detector = Detector(weight_dir=weight_dir, mode=1)
+    detector = Detector(weight_dir=weight_dir, mode=1, min_face_size=24)
     im = cv2.imread(image_file)
-    im = (im - 127.5) / 128
-    labels, bboxes, landmarks = detector.predict([im])
-    print(labels)
-    print(bboxes)
-    print(landmarks)
-    for box in bboxes:
+    labels, bboxes, landmarks = detector.predict(im)
+    print('------------------{}------------'.format(len(bboxes)))
+    for box in bboxes[:50]:
         box = np.squeeze(box)
         print('box is {}'.format(box))
-        x1, y1, x2, y2 = box
+        x1, y1, x2, y2, _ = box
+        x1 = int(x1)
+        y1 = int(y1)
+        x2 = int(x2)
+        y2 = int(y2)
         cv2.rectangle(im, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cv2.imshow('image', im)
     cv2.waitKey(0)
