@@ -7,7 +7,7 @@ import tensorflow as tf
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.optimizers import Adam
 
-from mtcnn import p_net, r_net
+from mtcnn import p_net, r_net, o_net
 from .config import LABEL_MAP
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), '../logs')
@@ -163,3 +163,37 @@ def train_r_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epo
                callbacks=callbacks,
                verbose=1)
     return _r_net
+
+
+def train_o_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+                callbacks=None, weights_file=None):
+    y = np.concatenate((labels, bboxes, landmarks), axis=1)
+    _o_net = o_net(training=True)
+    _o_net.summary()
+    if weights_file is not None:
+        _o_net.load_weights(weights_file)
+
+    _o_net.compile(Adam(lr=lr), loss=_loss_func, metrics=['accuracy'])
+    _o_net.fit(inputs_image, y,
+               batch_size=batch_size,
+               initial_epoch=initial_epoch,
+               epochs=epochs,
+               callbacks=callbacks,
+               verbose=1)
+    return _o_net
+
+
+def train_o_net_with_data_generator(data_gen, steps_per_epoch, initial_epoch=0, epochs=1000, lr=0.001,
+                                    callbacks=None, weights_file=None):
+    _o_net = o_net(training=True)
+    _o_net.summary()
+    if weights_file is not None:
+        _o_net.load_weights(weights_file)
+
+    _o_net.compile(Adam(lr=lr), loss=_loss_func, metrics=['accuracy'])
+
+    _o_net.fit_generator(data_gen,
+                         steps_per_epoch=steps_per_epoch,
+                         initial_epoch=initial_epoch,
+                         epochs=epochs,
+                         callbacks=callbacks)

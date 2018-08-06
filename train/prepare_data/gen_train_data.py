@@ -57,7 +57,7 @@ def create_landmark_dataset(net_name, landmark_anno, target_size, out_dir):
         im = im.astype('uint8')
         ims.append(im)
 
-        labels.append(words[1])
+        labels.append(int(words[1]))
 
         landmark = words[2:12]
         landmark = list(map(float, landmark))
@@ -68,7 +68,7 @@ def create_landmark_dataset(net_name, landmark_anno, target_size, out_dir):
     random.shuffle(landmark_data)
     labels, ims, landmarks = zip(*landmark_data)
 
-    landmark_data_filename = os.path.join(out_dir, 'landmarks_{}.pkl'.format(net_name))
+    landmark_data_filename = os.path.join(out_dir, 'landmarks_{}.h5'.format(net_name))
     h5utils.save_dict_to_hdf5({'labels': labels, 'ims': ims, 'landmarks': landmarks}, landmark_data_filename)
 
     bar.finish()

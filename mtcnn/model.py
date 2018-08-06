@@ -56,7 +56,7 @@ def r_net(training=False):
     return model
 
 
-def o_net():
+def o_net(training=False):
     x = Input(shape=(48, 48, 3))
     y = layers.Conv2D(32, 3, padding='same', strides=(1, 1), name='o_conv1')(x)
     y = layers.PReLU(shared_axes=(1, 2), name='o_prelu1')(y)
@@ -77,8 +77,11 @@ def o_net():
     bbox = layers.Dense(4, name='o_bbox')(y)
     landmark = layers.Dense(10, name='o_landmark')(y)
 
-    model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='O_Net')
-
+    if training:
+        outputs = layers.concatenate([classifier, bbox, landmark])
+        model = Model(inputs=[x], outputs=[outputs], name='O_Net')
+    else:
+        model = Model(inputs=[x], outputs=[classifier, bbox, landmark], name='O_Net')
     return model
 
 
