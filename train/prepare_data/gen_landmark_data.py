@@ -203,6 +203,7 @@ def save_data(face_images, face_landmarks, net_name, out_dir):
     img_dir = os.path.join(out_dir, 'landmarks_{}'.format(net_name))
     if not os.path.exists(img_dir):
         os.mkdir(img_dir)
+
     output_file = os.path.join(out_dir, 'landmarks_{}.txt'.format(net_name))
     with open(output_file, 'w', encoding='utf-8') as f:
         for im, point in zip(face_images, face_landmarks):

@@ -1,6 +1,5 @@
 import argparse
 import os
-import pickle
 import random
 import sys
 
@@ -8,6 +7,7 @@ import cv2
 import numpy as np
 from progress.bar import Bar
 
+import train.h5py_utils as h5utils
 from train.config import NET_SIZE
 from train.utils import resize
 
@@ -69,9 +69,7 @@ def create_landmark_dataset(net_name, landmark_anno, target_size, out_dir):
     labels, ims, landmarks = zip(*landmark_data)
 
     landmark_data_filename = os.path.join(out_dir, 'landmarks_{}.pkl'.format(net_name))
-
-    with open(landmark_data_filename, 'wb') as f:
-        pickle.dump({'labels': labels, 'ims': ims, 'landmarks': landmarks}, f)
+    h5utils.save_dict_to_hdf5({'labels': labels, 'ims': ims, 'landmarks': landmarks}, landmark_data_filename)
 
     bar.finish()
     print('landmarks data done, total: {}'.format(len(ims)))
@@ -119,9 +117,9 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
     bboxes_data = list(zip(ims, labels, bboxes))
     random.shuffle(bboxes_data)
     ims, labels, bboxes = zip(*bboxes_data)
-    label_data_filename = os.path.join(out_dir, 'bboxes_{}.pkl'.format(net_name))
-    with open(label_data_filename, 'wb') as f:
-        pickle.dump({'ims': ims, 'labels': labels, 'bboxes': bboxes}, f)
+
+    bbox_data_filename = os.path.join(out_dir, 'bboxes_{}.h5'.format(net_name))
+    h5utils.save_dict_to_hdf5({'ims': ims, 'labels': labels, 'bboxes': bboxes}, bbox_data_filename)
 
     bar.finish()
     print('bboxes data done, total: {}'.format(len(ims)))
@@ -160,9 +158,9 @@ def create_label_dataset(net_name, neg, pos, target_size, out_dir):
     label_data = list(zip(ims, labels))
     random.shuffle(label_data)
     ims, labels = zip(*label_data)
-    label_data_filename = os.path.join(out_dir, 'label_{}.pkl'.format(net_name))
-    with open(label_data_filename, 'wb') as f:
-        pickle.dump({'ims': ims, 'labels': labels}, f)
+
+    label_data_filename = os.path.join(out_dir, 'label_{}.h5'.format(net_name))
+    h5utils.save_dict_to_hdf5({'ims': ims, 'labels': labels}, label_data_filename)
 
     bar.finish()
     print('label data done, total : {}'.format(len(ims)))
