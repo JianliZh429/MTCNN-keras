@@ -17,7 +17,7 @@ def train_with_data_generator(dataset_dir, batch_size, epochs, learning_rate, we
     data_generator = DataGenerator(label_dataset_path, bboxes_dataset_path, landmarks_dataset_path, batch_size,
                                    im_size=NET_SIZE['o_net'])
     data_gen = data_generator.generate()
-    steps_per_epoch = data_generator.steps_per_epoch()
+    steps_per_epoch = data_generator.steps_per_epoch
 
     callbacks, model_file = create_callbacks_model_file('o_net', epochs)
 
