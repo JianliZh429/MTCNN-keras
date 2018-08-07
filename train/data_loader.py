@@ -21,9 +21,9 @@ class DataGenerator:
 
         self.batch_size = batch_size
 
-        self.label_len = len(self.label_file['ims'])
-        self.bbox_len = len(self.bbox_file['ims'])
-        self.landmark_len = len(self.landmark_file['ims'])
+        self.label_len = len(self.label_file['labels'])
+        self.bbox_len = len(self.bbox_file['labels'])
+        self.landmark_len = len(self.landmark_file['labels'])
         self.label_cursor = 0
         self.bbox_cursor = 0
         self.landmark_cursor = 0
@@ -31,55 +31,63 @@ class DataGenerator:
         self.steps_per_epoch = int((self.label_len + self.bbox_len + self.landmark_len) / self.batch_size)
 
         self.index = 0
+        self.epoch_done = False
         self._gen_sub_batch()
+
+    def _reset(self):
+        self.index = 0
+        self.epoch_done = False
+        self.label_cursor = 0
+        self.bbox_cursor = 0
+        self.landmark_cursor = 0
 
     def _gen_sub_batch(self):
         n = self.steps_per_epoch
-        self.label_batch = npr.multinomial(self.label_len, np.ones(n) / n, size=1)[0]
-        self.bbox_batch = npr.multinomial(self.bbox_len, np.ones(n) / n, size=1)[0]
-        self.landmark_batch = npr.multinomial(self.landmark_len, np.ones(n) / n, size=1)[0]
+        self.label_batch_list = npr.multinomial(self.label_len, np.ones(n) / n, size=1)[0]
+        self.bbox_batch_list = npr.multinomial(self.bbox_len, np.ones(n) / n, size=1)[0]
+        self.landmark_batch_list = npr.multinomial(self.landmark_len, np.ones(n) / n, size=1)[0]
 
     def _load_label_dataset(self):
-        end = self.label_cursor + self.label_batch[self.index]
+        end = self.label_cursor + self.label_batch_list[self.index]
 
         im_batch = self.label_file['ims'][self.label_cursor:end]
         labels_batch = self.label_file['labels'][self.label_cursor:end]
 
-        batch_size = self.label_batch[self.index]
+        batch_size = im_batch.shape[0]
 
         bboxes_batch = np.zeros(shape=(batch_size, 4), dtype=np.float32)
         landmarks_batch = np.zeros(shape=(batch_size, 10), dtype=np.float32)
 
         self.label_cursor = end
-
+        self.epoch_done = True if self.label_cursor >= self.label_len else self.epoch_done
         return im_batch, labels_batch, bboxes_batch, landmarks_batch
 
     def _load_bbox_dataset(self):
-        end = self.bbox_cursor + self.bbox_batch[self.index]
+        end = self.bbox_cursor + self.bbox_batch_list[self.index]
 
         im_batch = self.bbox_file['ims'][self.bbox_cursor:end]
         box_batch = self.bbox_file['bboxes'][self.bbox_cursor:end]
         label_batch = self.bbox_file['labels'][self.bbox_cursor:end]
 
-        batch_size = self.bbox_batch[self.index]
+        batch_size = im_batch.shape[0]
         landmarks_batch = np.zeros(shape=(batch_size, 10), dtype=np.float32)
 
         self.bbox_cursor = end
-
+        self.epoch_done = True if self.bbox_cursor >= self.bbox_len else self.epoch_done
         return im_batch, label_batch, box_batch, landmarks_batch
 
     def _load_landmark_dataset(self):
-        end = self.landmark_cursor + self.landmark_batch[self.index]
+        end = self.landmark_cursor + self.landmark_batch_list[self.index]
 
         im_batch = self.landmark_file['ims'][self.landmark_cursor:end]
         landmark_batch = self.landmark_file['landmarks'][self.landmark_cursor:end]
         label_batch = self.landmark_file['labels'][self.landmark_cursor:end]
 
-        batch_size = self.landmark_batch[self.index]
+        batch_size = im_batch.shape[0]
         bboxes_batch = np.array([[0, 0, self.im_size - 1, self.im_size - 1]] * batch_size, np.float32)
 
         self.landmark_cursor = end
-
+        self.epoch_done = True if self.landmark_cursor >= self.landmark_len else self.epoch_done
         return im_batch, label_batch, bboxes_batch, landmark_batch,
 
     def im_show(self, n):
@@ -91,38 +99,29 @@ class DataGenerator:
         cv2.destroyAllWindows()
 
     def generate(self):
-        while 1:
-            if self.index == self.steps_per_epoch:
-                self.index = 0
+        while True:
+            if self.index >= self.steps_per_epoch or self.epoch_done:
+                self._reset()
                 self._gen_sub_batch()
 
             im_batch1, labels_batch1, bboxes_batch1, landmarks_batch1 = self._load_label_dataset()
             im_batch2, labels_batch2, bboxes_batch2, landmarks_batch2 = self._load_bbox_dataset()
             im_batch3, labels_batch3, bboxes_batch3, landmarks_batch3 = self._load_landmark_dataset()
+            self.index += 1
 
             x_batch = np.concatenate((im_batch1, im_batch2, im_batch3), axis=0)
             x_batch = _process_im(x_batch)
+            if x_batch.shape[0] < 1:
+                self.epoch_done = True
+                continue
 
             label_batch = np.concatenate((labels_batch1, labels_batch2, labels_batch3), axis=0)
             label_batch = np.array(_process_label(label_batch))
-
-            # print('\n============================bboxes_batch1 shape is {}'.format(bboxes_batch1.shape))
-            # print('============================bboxes_batch2 shape is {}'.format(bboxes_batch2.shape))
-            # print('============================bboxes_batch3 shape is {}'.format(bboxes_batch3.shape))
-
             bbox_batch = np.concatenate((bboxes_batch1, bboxes_batch2, bboxes_batch3), axis=0)
-            # print('============================bbox_batch shape is {}'.format(bbox_batch.shape))
-
             landmark_batch = np.concatenate((landmarks_batch1, landmarks_batch2, landmarks_batch3), axis=0)
 
-            # print('\n============================label_batch shape is {}'.format(label_batch.shape))
-            # print('============================bbox_batch shape is {}'.format(bbox_batch.shape))
-            # print('============================landmark_batch shape is {}'.format(landmark_batch.shape))
             y_batch = np.concatenate((label_batch, bbox_batch, landmark_batch), axis=1)
-
             yield x_batch, y_batch
-
-            self.index += 1
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.label_file.close()
