@@ -5,7 +5,7 @@ import keras.backend.tensorflow_backend as TK
 import numpy as np
 import tensorflow as tf
 from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.optimizers import Adam
+from keras.optimizers import Adam, SGD
 
 from mtcnn import p_net, r_net, o_net
 from .config import LABEL_MAP
@@ -187,10 +187,13 @@ def train_o_net_with_data_generator(data_gen, steps_per_epoch, initial_epoch=0, 
                                     callbacks=None, weights_file=None):
     _o_net = o_net(training=True)
     _o_net.summary()
+    optimizer = SGD(lr=lr, momentum=0.9, decay=0.01, nesterov=True)
+    # optimizer = Adam(lr=lr)
+
     if weights_file is not None:
         _o_net.load_weights(weights_file)
 
-    _o_net.compile(Adam(lr=lr), loss=_loss_func, metrics=['accuracy'])
+    _o_net.compile(optimizer, loss=_loss_func, metrics=['accuracy'])
 
     _o_net.fit_generator(data_gen,
                          steps_per_epoch=steps_per_epoch,

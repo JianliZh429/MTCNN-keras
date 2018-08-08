@@ -45,9 +45,6 @@ def r_net(training=False):
     landmark = layers.Dense(10, name='r_landmark')(y)
 
     if training:
-        # classifier = layers.Reshape((2,), name='r_classifier1')(classifier)
-        # bbox = layers.Reshape((4,), name='r_bbox1')(bbox)
-        # landmark = layers.Reshape((10,), name='r_landmark1')(landmark)
         outputs = layers.concatenate([classifier, bbox, landmark])
         model = Model(inputs=[x], outputs=[outputs], name='R_Net')
     else:

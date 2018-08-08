@@ -15,7 +15,7 @@ def train_with_data_generator(dataset_dir, batch_size, epochs, learning_rate, we
     landmarks_dataset_path = os.path.join(dataset_dir, 'landmarks_o_net.h5')
 
     data_generator = DataGenerator(label_dataset_path, bboxes_dataset_path, landmarks_dataset_path, batch_size,
-                                   im_size=NET_SIZE['o_net'])
+                                   im_size=NET_SIZE['o_net'], shuffle=True)
     data_gen = data_generator.generate()
     steps_per_epoch = data_generator.steps_per_epoch
 
@@ -54,4 +54,4 @@ if __name__ == '__main__':
     parser.add_argument('--weights', type=str, default=None, help='Init weights to load')
     args = parser.parse_args(sys.argv[1:])
 
-    train_with_data_generator(args.dataset, args.batch_size, args.epochs, args.learning_rate)
+    train_with_data_generator(args.dataset, args.batch_size, args.epochs, args.learning_rate, args.weights)

@@ -13,7 +13,9 @@ from .config import LABEL_MAP
 
 class DataGenerator:
 
-    def __init__(self, label_dataset_path, bboxes_dataset_path, landmarks_dataset_path, batch_size, im_size):
+    def __init__(self, label_dataset_path, bboxes_dataset_path, landmarks_dataset_path, batch_size, im_size,
+                 shuffle=False):
+
         self.im_size = im_size
         self.label_file = h5py.File(label_dataset_path, 'r')
         self.bbox_file = h5py.File(bboxes_dataset_path, 'r')
@@ -33,6 +35,7 @@ class DataGenerator:
         self.index = 0
         self.epoch_done = False
         self._gen_sub_batch()
+        self.shuffle = shuffle
 
     def _reset(self):
         self.index = 0
@@ -48,46 +51,81 @@ class DataGenerator:
         self.landmark_batch_list = npr.multinomial(self.landmark_len, np.ones(n) / n, size=1)[0]
 
     def _load_label_dataset(self):
-        end = self.label_cursor + self.label_batch_list[self.index]
 
-        im_batch = self.label_file['ims'][self.label_cursor:end]
-        labels_batch = self.label_file['labels'][self.label_cursor:end]
+        if self.shuffle:
+            selected = random.sample(range(0, self.label_len), self.label_batch_list[self.index])
+            im_batch = []
+            labels_batch = []
+            for i in selected:
+                im_batch.append(self.label_file['ims'][i])
+                labels_batch.append(self.label_file['labels'][i])
+            im_batch = np.array(im_batch, dtype=np.float32)
+        else:
+            end = self.label_cursor + self.label_batch_list[self.index]
+            im_batch = self.label_file['ims'][self.label_cursor:end]
+            labels_batch = self.label_file['labels'][self.label_cursor:end]
+
+            self.label_cursor = end
+            self.epoch_done = True if self.label_cursor >= self.label_len else self.epoch_done
 
         batch_size = im_batch.shape[0]
 
         bboxes_batch = np.zeros(shape=(batch_size, 4), dtype=np.float32)
         landmarks_batch = np.zeros(shape=(batch_size, 10), dtype=np.float32)
 
-        self.label_cursor = end
-        self.epoch_done = True if self.label_cursor >= self.label_len else self.epoch_done
         return im_batch, labels_batch, bboxes_batch, landmarks_batch
 
     def _load_bbox_dataset(self):
-        end = self.bbox_cursor + self.bbox_batch_list[self.index]
+        if self.shuffle:
+            selected = random.sample(range(0, self.bbox_len), self.bbox_batch_list[self.index])
+            im_batch = []
+            box_batch = []
+            label_batch = []
+            for i in selected:
+                im_batch.append(self.bbox_file['ims'][i])
+                box_batch.append(self.bbox_file['bboxes'][i])
+                label_batch.append(self.bbox_file['labels'][i])
+            im_batch = np.array(im_batch, dtype=np.float32)
+            box_batch = np.array(box_batch, dtype=np.float32)
+        else:
+            end = self.bbox_cursor + self.bbox_batch_list[self.index]
 
-        im_batch = self.bbox_file['ims'][self.bbox_cursor:end]
-        box_batch = self.bbox_file['bboxes'][self.bbox_cursor:end]
-        label_batch = self.bbox_file['labels'][self.bbox_cursor:end]
+            im_batch = self.bbox_file['ims'][self.bbox_cursor:end]
+            box_batch = self.bbox_file['bboxes'][self.bbox_cursor:end]
+            label_batch = self.bbox_file['labels'][self.bbox_cursor:end]
+
+            self.bbox_cursor = end
+            self.epoch_done = True if self.bbox_cursor >= self.bbox_len else self.epoch_done
 
         batch_size = im_batch.shape[0]
         landmarks_batch = np.zeros(shape=(batch_size, 10), dtype=np.float32)
 
-        self.bbox_cursor = end
-        self.epoch_done = True if self.bbox_cursor >= self.bbox_len else self.epoch_done
         return im_batch, label_batch, box_batch, landmarks_batch
 
     def _load_landmark_dataset(self):
-        end = self.landmark_cursor + self.landmark_batch_list[self.index]
+        if self.shuffle:
+            selected = random.sample(range(0, self.landmark_len), self.landmark_batch_list[self.index])
+            im_batch = []
+            landmark_batch = []
+            label_batch = []
+            for i in selected:
+                im_batch.append(self.landmark_file['ims'][i])
+                landmark_batch.append(self.landmark_file['landmarks'][i])
+                label_batch.append(self.landmark_file['labels'][i])
+            im_batch = np.array(im_batch, dtype=np.float32)
+            landmark_batch = np.array(landmark_batch, dtype=np.float32)
+        else:
+            end = self.landmark_cursor + self.landmark_batch_list[self.index]
 
-        im_batch = self.landmark_file['ims'][self.landmark_cursor:end]
-        landmark_batch = self.landmark_file['landmarks'][self.landmark_cursor:end]
-        label_batch = self.landmark_file['labels'][self.landmark_cursor:end]
+            im_batch = self.landmark_file['ims'][self.landmark_cursor:end]
+            landmark_batch = self.landmark_file['landmarks'][self.landmark_cursor:end]
+            label_batch = self.landmark_file['labels'][self.landmark_cursor:end]
+            self.landmark_cursor = end
+            self.epoch_done = True if self.landmark_cursor >= self.landmark_len else self.epoch_done
 
         batch_size = im_batch.shape[0]
         bboxes_batch = np.array([[0, 0, self.im_size - 1, self.im_size - 1]] * batch_size, np.float32)
 
-        self.landmark_cursor = end
-        self.epoch_done = True if self.landmark_cursor >= self.landmark_len else self.epoch_done
         return im_batch, label_batch, bboxes_batch, landmark_batch,
 
     def im_show(self, n):
