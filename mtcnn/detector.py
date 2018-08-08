@@ -1,7 +1,8 @@
+import cv2
 import numpy as np
 
 from mtcnn import p_net, o_net, r_net
-from .utils import load_weights, process_image, generate_bbox, py_nms
+from .utils import load_weights, process_image, generate_bbox, py_nms, bbox_2_square, pad, calibrate_bbox
 
 
 class Detector:
@@ -79,7 +80,89 @@ class Detector:
         return self.refine_bboxes(all_boxes)
 
     def predict_with_r_net(self, im, boxes):
-        pass
+        h, w, c = im.shape
+        box = bbox_2_square(boxes)
+        box[:, 0:4] = np.round(box[:, 0:4])
+
+        [dy, edy, dx, edx, y, ey, x, ex, tmp_w, tmp_h] = pad(box, w, h)
+        num_boxes = box.shape[0]
+        cropped_ims = np.zeros((num_boxes, 24, 24, 3), dtype=np.float32)
+        for i in range(num_boxes):
+            tmp = np.zeros((tmp_h[i], tmp_w[i], 3), dtype=np.uint8)
+            tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
+            cropped_ims[i, :, :, :] = (cv2.resize(tmp, (24, 24)) - 127.5) / 128
+
+        cls_scores, reg, _ = self.r_net.predict(cropped_ims)
+        cls_scores = cls_scores[:, 1]
+        keep_indices = np.where(cls_scores > self.threshold[1])[0]
+        if len(keep_indices) > 0:
+            boxes = box[keep_indices]
+            boxes[:, 4] = cls_scores[keep_indices]
+            reg = reg[keep_indices]
+            # landmark = landmark[keep_inds]
+        else:
+            return None, None, None
+
+        keep = py_nms(boxes, 0.6)
+        boxes = boxes[keep]
+        boxes_c = calibrate_bbox(boxes, reg[keep])
+        return boxes, boxes_c, None
+
+    def predict_with_o_net(self, im, bbox):
+        """Get face candidates using onet
+
+        Parameters:
+        ----------
+        im: numpy array
+            input image array
+        bbox: numpy array
+            detection results of rnet
+
+        Returns:
+        -------
+        boxes: numpy array
+            detected boxes before calibration
+        boxes_c: numpy array
+            boxes after calibration
+        """
+
+        h, w, c = im.shape
+        box = bbox_2_square(bbox)
+        box[:, 0:4] = np.round(box[:, 0:4])
+        [dy, edy, dx, edx, y, ey, x, ex, tmp_w, tmp_h] = pad(box, w, h)
+        num_boxes = box.shape[0]
+        cropped_ims = np.zeros((num_boxes, 48, 48, 3), dtype=np.float32)
+        for i in range(num_boxes):
+            tmp = np.zeros((tmp_h[i], tmp_w[i], 3), dtype=np.uint8)
+            tmp[dy[i]:edy[i] + 1, dx[i]:edx[i] + 1, :] = im[y[i]:ey[i] + 1, x[i]:ex[i] + 1, :]
+            cropped_ims[i, :, :, :] = (cv2.resize(tmp, (48, 48)) - 127.5) / 128
+
+        cls_scores, reg, landmark = self.o_net.predict(cropped_ims)
+        # prob belongs to face
+        cls_scores = cls_scores[:, 1]
+        keep_indices = np.where(cls_scores > self.threshold[2])[0]
+        if len(keep_indices) > 0:
+            # pick out filtered box
+            boxes = box[keep_indices]
+            boxes[:, 4] = cls_scores[keep_indices]
+            reg = reg[keep_indices]
+            landmark = landmark[keep_indices]
+        else:
+            return None, None, None
+
+        # width
+        w = boxes[:, 2] - boxes[:, 0] + 1
+        # height
+        h = boxes[:, 3] - boxes[:, 1] + 1
+        landmark[:, 0::2] = (np.tile(w, (5, 1)) * landmark[:, 0::2].T + np.tile(boxes[:, 0], (5, 1)) - 1).T
+        landmark[:, 1::2] = (np.tile(h, (5, 1)) * landmark[:, 1::2].T + np.tile(boxes[:, 1], (5, 1)) - 1).T
+        boxes_c = calibrate_bbox(boxes, reg)
+
+        boxes = boxes[py_nms(boxes, 0.6, "Minimum")]
+        keep = py_nms(boxes_c, 0.6, "Minimum")
+        boxes_c = boxes_c[keep]
+        landmark = landmark[keep]
+        return boxes, boxes_c, landmark
 
     @staticmethod
     def refine_bboxes(all_boxes):
