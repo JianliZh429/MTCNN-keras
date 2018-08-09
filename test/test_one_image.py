@@ -1,4 +1,3 @@
-import numpy as np
 import sys
 from argparse import ArgumentParser
 
@@ -10,10 +9,10 @@ from mtcnn.detector import Detector
 def main(weight_dir, image_file):
     detector = Detector(weight_dir=weight_dir, mode=1, min_face_size=24)
     im = cv2.imread(image_file)
-    labels, bboxes, landmarks = detector.predict(im)
+    bboxes, landmarks = detector.predict([im])
     print('------------------{}------------'.format(len(bboxes)))
-    for box in bboxes[:50]:
-        box = np.squeeze(box)
+    bboxes = bboxes[0]
+    for box in bboxes[:4]:
         print('box is {}'.format(box))
         x1, y1, x2, y2, _ = box
         x1 = int(x1)

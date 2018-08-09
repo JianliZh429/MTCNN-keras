@@ -26,6 +26,7 @@ def load_weights(weights_dir):
 
 
 def process_image(img, scale):
+    print('--------------', img.shape)
     height, width, channels = img.shape
     new_height = int(height * scale)  # resized new height
     new_width = int(width * scale)  # resized new width

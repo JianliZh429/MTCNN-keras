@@ -40,10 +40,36 @@ class Detector:
             self.o_net = o_net()
             self.o_net.load_weights(o_weights)
 
-    def predict(self, image):
+    def predict(self, np_images):
+
         if not self.slide_window:
-            im_ = np.array(image)
-            return self.predict_with_p_net(im_)
+            all_boxes = []  # save each image's bboxes
+            landmarks = []
+            for im in np_images:
+                boxes, boxes_c, landmark = self.predict_with_p_net(im)
+                if boxes_c is None:
+                    print("boxes_c is None...")
+                    all_boxes.append(np.array([]))
+                    landmarks.append(np.array([]))
+                    continue
+                if self.r_net:
+                    boxes, boxes_c, landmark = self.predict_with_o_net(im, boxes_c)
+                    if boxes_c is None:
+                        print("boxes_c is None...")
+                        all_boxes.append(np.array([]))
+                        landmarks.append(np.array([]))
+                        continue
+                if self.o_net:
+                    boxes, boxes_c, landmark = self.predict_with_o_net(im, boxes_c)
+                    if boxes_c is None:
+                        print("boxes_c is None...")
+                        all_boxes.append(np.array([]))
+                        landmarks.append(np.array([]))
+                        continue
+
+                all_boxes.append(boxes_c)
+                landmarks.append(landmark)
+            return all_boxes, landmarks
         else:
             raise NotImplementedError('Not implemented yet')
 
