@@ -18,9 +18,9 @@ def train_with_data_generator(dataset_dir, batch_size, epochs, learning_rate, we
                                    im_size=NET_SIZE['o_net'], shuffle=True)
     data_gen = data_generator.generate()
     steps_per_epoch = data_generator.steps_per_epoch
-
+    # data_generator.im_show(10)
     callbacks, model_file = create_callbacks_model_file('o_net', epochs)
-
+    #
     _o_net = train_o_net_with_data_generator(data_gen, steps_per_epoch,
                                              initial_epoch=0,
                                              epochs=epochs,

@@ -124,15 +124,28 @@ class DataGenerator:
             self.epoch_done = True if self.landmark_cursor >= self.landmark_len else self.epoch_done
 
         batch_size = im_batch.shape[0]
-        bboxes_batch = np.array([[0, 0, self.im_size - 1, self.im_size - 1]] * batch_size, np.float32)
+        # bboxes_batch = np.array([[0, 0, self.im_size - 1, self.im_size - 1]] * batch_size, np.float32)
+        bboxes_batch = np.array([[0, 0, 0, 0]] * batch_size, np.float32)
 
         return im_batch, label_batch, bboxes_batch, landmark_batch,
 
-    def im_show(self, n):
-        ns = random.sample(range(0, len(self.landmark_file['ims'][:])), n)
-        for i in ns:
+    def im_show(self, n=3):
+        assert n < 15
+        l_ns = random.sample(range(0, len(self.label_file['ims'][:])), n)
+        b_ns = random.sample(range(0, len(self.bbox_file['ims'][:])), n)
+        m_ns = random.sample(range(0, len(self.landmark_file['ims'][:])), n)
+        for i in l_ns:
+            im = self.label_file['ims'][i]
+            label = self.label_file['labels'][i]
+            cv2.imshow('label_{}_{}'.format(i, label), im)
+        for i in b_ns:
+            im = self.bbox_file['ims'][i]
+            bboxes = self.bbox_file['bboxes'][i]
+            cv2.imshow('bbox_{}_{}'.format(i, bboxes), im)
+        for i in m_ns:
             im = self.landmark_file['ims'][i]
-            cv2.imshow('{}'.format(i), im)
+            landmarks = self.landmark_file['landmarks'][i]
+            cv2.imshow('landmark_{}_'.format(i, landmarks), im)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 

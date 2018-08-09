@@ -187,8 +187,8 @@ def train_o_net_with_data_generator(data_gen, steps_per_epoch, initial_epoch=0, 
                                     callbacks=None, weights_file=None):
     _o_net = o_net(training=True)
     _o_net.summary()
-    optimizer = SGD(lr=lr, momentum=0.9, decay=0.01, nesterov=True)
-    # optimizer = Adam(lr=lr)
+    # optimizer = SGD(lr=lr, momentum=0.9, decay=0.01, nesterov=True)
+    optimizer = Adam(lr=lr, decay=0.0001)
 
     if weights_file is not None:
         _o_net.load_weights(weights_file)
