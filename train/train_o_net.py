@@ -2,11 +2,54 @@ import os
 import sys
 from argparse import ArgumentParser
 
+import numpy as np
+from keras.optimizers import Adam
+
+from mtcnn import o_net
 from train.config import NET_SIZE
 from train.data_loader import load_dataset, DataGenerator
-from train.train_net import train_o_net, create_callbacks_model_file, train_o_net_with_data_generator
+from train.train_helper import create_callbacks_model_file, loss_func
 
 im_size = NET_SIZE['o_net']
+
+
+def train_o_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+                callbacks=None, weights_file=None):
+    y = np.concatenate((labels, bboxes, landmarks), axis=1)
+    _o_net = o_net(training=True)
+    _o_net.summary()
+    if weights_file is not None:
+        _o_net.load_weights(weights_file)
+
+    _o_net.compile(Adam(lr=lr), loss=loss_func, metrics=['accuracy'])
+    _o_net.fit(inputs_image, y,
+               batch_size=batch_size,
+               initial_epoch=initial_epoch,
+               epochs=epochs,
+               callbacks=callbacks,
+               verbose=1)
+    return _o_net
+
+
+def train_o_net_with_data_generator(data_gen, steps_per_epoch, initial_epoch=0, epochs=1000, lr=0.001,
+                                    callbacks=None, weights_file=None):
+    _o_net = o_net(training=True)
+    _o_net.summary()
+    # optimizer = SGD(lr=lr, momentum=0.9, decay=0.01, nesterov=True)
+    optimizer = Adam(lr=lr, decay=0.0001)
+
+    if weights_file is not None:
+        _o_net.load_weights(weights_file)
+
+    _o_net.compile(optimizer, loss=loss_func, metrics=['accuracy'])
+
+    _o_net.fit_generator(data_gen,
+                         steps_per_epoch=steps_per_epoch,
+                         initial_epoch=initial_epoch,
+                         epochs=epochs,
+                         callbacks=callbacks)
+
+    return _o_net
 
 
 def train_with_data_generator(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):

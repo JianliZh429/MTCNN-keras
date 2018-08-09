@@ -2,9 +2,31 @@ import os
 import sys
 from argparse import ArgumentParser
 
+import numpy as np
+from keras.optimizers import SGD
+
+from mtcnn import p_net
 from train.config import NET_SIZE
 from train.data_loader import load_dataset
-from train.train_net import train_p_net, create_callbacks_model_file
+from train.train_helper import create_callbacks_model_file, loss_func, metric_acc
+
+
+def train_p(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+            callbacks=None, weights_file=None):
+    y = np.concatenate((labels, bboxes, landmarks), axis=1)
+    _p_net = p_net(training=True)
+    _p_net.summary()
+    if weights_file is not None:
+        _p_net.load_weights(weights_file)
+
+    _p_net.compile(SGD(lr, momentum=0.9, decay=0.001), loss=loss_func, metrics=[metric_acc])
+    _p_net.fit(inputs_image, y,
+               batch_size=batch_size,
+               initial_epoch=initial_epoch,
+               epochs=epochs,
+               callbacks=callbacks,
+               verbose=1)
+    return _p_net
 
 
 def train_all_in_one(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
@@ -15,8 +37,8 @@ def train_all_in_one(dataset_dir, batch_size, epochs, learning_rate, weights_fil
                                                              landmarks_dataset_path, im_size=NET_SIZE['p_net'])
 
     callbacks, model_file = create_callbacks_model_file('p_net', epochs)
-    _p_net = train_p_net(images_x, labels_y, bboxes_y, landmarks_y, batch_size, initial_epoch=0, epochs=epochs,
-                         lr=learning_rate, callbacks=callbacks, weights_file=weights_file)
+    _p_net = train_p(images_x, labels_y, bboxes_y, landmarks_y, batch_size, initial_epoch=0, epochs=epochs,
+                     lr=learning_rate, callbacks=callbacks, weights_file=weights_file)
 
     _p_net.save_weights(model_file)
 
@@ -26,7 +48,7 @@ if __name__ == '__main__':
     parser.add_argument('dataset', type=str, help='Folder of training data')
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size of training')
     parser.add_argument('--epochs', type=int, default=1000, help='Epochs to train')
-    parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate while training')
+    parser.add_argument('--learning_rate', type=float, default=0.0001, help='Learning rate while training')
     parser.add_argument('--weights', type=str, default=None, help='Init weights to load')
     args = parser.parse_args(sys.argv[1:])
 

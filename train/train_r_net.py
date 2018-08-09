@@ -2,9 +2,31 @@ import os
 import sys
 from argparse import ArgumentParser
 
-from train.data_loader import load_dataset
-from train.train_net import train_r_net, create_callbacks_model_file
+import numpy as np
+from keras.optimizers import Adam
+
+from mtcnn import r_net
 from train.config import NET_SIZE
+from train.data_loader import load_dataset
+from train.train_helper import create_callbacks_model_file, loss_func
+
+
+def train_r_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+                callbacks=None, weights_file=None):
+    y = np.concatenate((labels, bboxes, landmarks), axis=1)
+    _r_net = r_net(training=True)
+    _r_net.summary()
+    if weights_file is not None:
+        _r_net.load_weights(weights_file)
+
+    _r_net.compile(Adam(lr=lr), loss=loss_func, metrics=['accuracy'])
+    _r_net.fit(inputs_image, y,
+               batch_size=batch_size,
+               initial_epoch=initial_epoch,
+               epochs=epochs,
+               callbacks=callbacks,
+               verbose=1)
+    return _r_net
 
 
 def train_all_in_one(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
