@@ -8,7 +8,6 @@ import numpy as np
 import numpy.random as npr
 
 from train.h5py_utils import load_dict_from_hdf5
-from .config import LABEL_MAP
 
 
 class DataGenerator:
@@ -124,7 +123,6 @@ class DataGenerator:
             self.epoch_done = True if self.landmark_cursor >= self.landmark_len else self.epoch_done
 
         batch_size = im_batch.shape[0]
-        # bboxes_batch = np.array([[0, 0, self.im_size - 1, self.im_size - 1]] * batch_size, np.float32)
         bboxes_batch = np.array([[0, 0, 0, 0]] * batch_size, np.float32)
 
         return im_batch, label_batch, bboxes_batch, landmark_batch,
@@ -196,10 +194,14 @@ def _process_im(im):
     return (im.astype(np.float32) - 127.5) / 128
 
 
+LABEL_DICT = {'0': [0, 0], '1': [1, 0], '-1': [-1, 0], '-2': [-2, 0]}
+
+
 def _process_label(labels):
     label = []
     for ll in labels:
-        label.append(LABEL_MAP.get(str(ll)))
+        label.append(LABEL_DICT.get(str(ll)))
+
     return label
 
 
@@ -227,7 +229,7 @@ def load_dataset(label_dataset_path, bbox_dataset_path, landmark_dataset_path, i
     len_labels = len(l_label_y)
     images_x = np.concatenate((images_x, landmark_x), axis=0)
     labels_y = np.concatenate((labels_y, l_label_y), axis=0)
-    bboxes_y = np.concatenate((bboxes_y, np.array([[0, 0, im_size - 1, im_size - 1]] * len_labels, np.float32)), axis=0)
+    bboxes_y = np.concatenate((bboxes_y, np.array([[0, 0, 0, 0]] * len_labels, np.float32)), axis=0)
     landmarks_y = np.concatenate((landmarks_y, landmark_y), axis=0)
 
     assert len(images_x) == len(labels_y) == len(bboxes_y) == len(landmarks_y)
