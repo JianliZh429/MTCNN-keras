@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 from mtcnn import r_net
 from train.config import NET_SIZE
 from train.data_loader import load_dataset
-from train.train_helper import create_callbacks_model_file, loss_func
+from train.train_helper import create_callbacks_model_file, loss_func, metric_acc
 
 
 def train_r_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
@@ -19,7 +19,7 @@ def train_r_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epo
     if weights_file is not None:
         _r_net.load_weights(weights_file)
 
-    _r_net.compile(Adam(lr=lr), loss=loss_func, metrics=['accuracy'])
+    _r_net.compile(Adam(lr=lr), loss=loss_func, metrics=[metric_acc])
     _r_net.fit(inputs_image, y,
                batch_size=batch_size,
                initial_epoch=initial_epoch,

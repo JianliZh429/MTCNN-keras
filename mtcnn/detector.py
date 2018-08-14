@@ -96,7 +96,7 @@ class Detector:
             if boxes.size == 0:
                 continue
 
-            keep = py_nms(boxes[:, :5], 0.7, 'union')
+            keep = py_nms(boxes[:, :5], 0.5, 'union')
             boxes = boxes[keep]
             all_boxes.append(boxes)
 
@@ -194,7 +194,7 @@ class Detector:
     def refine_bboxes(all_boxes):
         all_boxes = np.vstack(all_boxes)
         # merge the detection from first stage
-        keep = py_nms(all_boxes[:, 0:5], 0.5, 'union')
+        keep = py_nms(all_boxes[:, 0:5], 0.7, 'union')
         all_boxes = all_boxes[keep]
         boxes = all_boxes[:, :5]
         bbw = all_boxes[:, 2] - all_boxes[:, 0] + 1

@@ -19,7 +19,7 @@ def train_p(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0
     if weights_file is not None:
         _p_net.load_weights(weights_file)
 
-    _p_net.compile(SGD(lr, momentum=0.9, decay=0.0001), loss=loss_func, metrics=[metric_acc])
+    _p_net.compile(SGD(lr, momentum=0.9, decay=0.00001, nesterov=True), loss=loss_func, metrics=[metric_acc])
     _p_net.fit(inputs_image, y,
                batch_size=batch_size,
                initial_epoch=initial_epoch,

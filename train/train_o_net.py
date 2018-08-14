@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 from mtcnn import o_net
 from train.config import NET_SIZE
 from train.data_loader import load_dataset, DataGenerator
-from train.train_helper import create_callbacks_model_file, loss_func
+from train.train_helper import create_callbacks_model_file, loss_func, metric_acc
 
 im_size = NET_SIZE['o_net']
 
@@ -21,7 +21,7 @@ def train_o_net(inputs_image, labels, bboxes, landmarks, batch_size, initial_epo
     if weights_file is not None:
         _o_net.load_weights(weights_file)
 
-    _o_net.compile(Adam(lr=lr), loss=loss_func, metrics=['accuracy'])
+    _o_net.compile(Adam(lr=lr), loss=loss_func, metrics=[metric_acc])
     _o_net.fit(inputs_image, y,
                batch_size=batch_size,
                initial_epoch=initial_epoch,
@@ -41,7 +41,7 @@ def train_o_net_with_data_generator(data_gen, steps_per_epoch, initial_epoch=0, 
     if weights_file is not None:
         _o_net.load_weights(weights_file)
 
-    _o_net.compile(optimizer, loss=loss_func, metrics=['accuracy'])
+    _o_net.compile(optimizer, loss=loss_func, metrics=[metric_acc])
 
     _o_net.fit_generator(data_gen,
                          steps_per_epoch=steps_per_epoch,
