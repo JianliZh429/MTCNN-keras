@@ -48,9 +48,9 @@ def build_save_path(out_dir):
 
 def save_hard_examples(net_name, out_dir, dataset, detections_path):
     neg_dir, pos_dir, part_dir = build_save_path(out_dir)
-    neg_file = open(os.path.join(out_dir, 'neg_{}.txt'.format(net_name)), encoding='utf-8')
-    pos_file = open(os.path.join(out_dir, 'pos_{}.txt'.format(net_name)), encoding='utf-8')
-    part_file = open(os.path.join(out_dir, 'part_{}.txt'.format(net_name)), encoding='utf-8')
+    neg_file = open(os.path.join(out_dir, 'neg_{}.txt'.format(net_name)), 'w', encoding='utf-8')
+    pos_file = open(os.path.join(out_dir, 'pos_{}.txt'.format(net_name)), 'w', encoding='utf-8')
+    part_file = open(os.path.join(out_dir, 'part_{}.txt'.format(net_name)), 'w', encoding='utf-8')
 
     with open(detections_path, 'rb') as f:
         detections = pickle.load(f)
@@ -75,14 +75,16 @@ def save_hard_examples(net_name, out_dir, dataset, detections_path):
 
         neg_num = 0
         for box in bbox_pred:
-            x1, y1, x2, y2 = box
+            x1, y1, x2, y2, _ = box
             width = x2 - x1 + 1
             height = y2 - y1 + 1
 
             if width < 20 or x1 < 0 or y1 < 0 or x2 > img.shape[1] - 1 or y2 > img.shape[0] - 1:
                 continue
+
             _iou = iou(box, box_true)
-            cropped_im = img[y1:y2 + 1, x1:x2 + 1, :]
+            print('box: {}, box_true: {}, _iou: {}'.format(box, box_true, _iou))
+            cropped_im = img[int(y1):int(y2 + 1), int(x1):int(x2 + 1), :]
             resized_im = cv2.resize(cropped_im, (im_size, im_size), interpolation=cv2.INTER_LINEAR)
             if np.max(_iou) < 0.3 and neg_num < 60:
                 file_name = os.path.join(neg_dir, '{0:08}.jpg'.format(n_idx))
@@ -128,29 +130,29 @@ def main(args):
     out_dir = args.out_dir
 
     assert net_name in NET_NAMES
-    dataset = load_widerface_dataset(images_dir, annotation_file)
-
-    detector = Detector(weight_dir=args.weights, mode=1)
-    length = len(dataset['images'])
-    bar = Bar(message='Load to np images...', max=length)
-    np_images = []
-    for img in dataset['images']:
-        bar.next()
-        im = cv2.imread(img)
-        np_images.append(im)
-    bar.finish()
-
-    print('Detecting...')
-    bboxes, landmarks = detector.predict(np_images, verbose=True)
-
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
     detections_path = os.path.join(out_dir, 'detections.pkl')
-    with open(detections_path, 'wb') as f:
-        pickle.dump({
-            'bboxes': bboxes,
-            'landmarks': landmarks
-        }, f)
+
+    dataset = load_widerface_dataset(images_dir, annotation_file)
+    if not os.path.exists(detections_path):
+        detector = Detector(weight_dir=args.weights, mode=1)
+        length = len(dataset['images'])
+        bar = Bar(message='Load to np images...', max=length)
+        np_images = []
+        for img in dataset['images']:
+            bar.next()
+            im = cv2.imread(img)
+            np_images.append(im)
+        bar.finish()
+
+        bboxes, landmarks = detector.predict(np_images, verbose=True)
+
+        with open(detections_path, 'wb') as f:
+            pickle.dump({
+                'bboxes': bboxes,
+                'landmarks': landmarks
+            }, f)
 
     save_hard_examples(net_name, out_dir, dataset, detections_path)
 

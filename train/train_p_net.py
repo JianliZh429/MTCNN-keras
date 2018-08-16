@@ -31,9 +31,9 @@ def train_p(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0
 
 
 def train_all_in_one(dataset_dir, batch_size, epochs, learning_rate, weights_file=None):
-    label_dataset_path = os.path.join(dataset_dir, 'label_p_net.pkl')
-    bboxes_dataset_path = os.path.join(dataset_dir, 'bboxes_p_net.pkl')
-    landmarks_dataset_path = os.path.join(dataset_dir, 'landmarks_p_net.pkl')
+    label_dataset_path = os.path.join(dataset_dir, 'label_p_net.h5')
+    bboxes_dataset_path = os.path.join(dataset_dir, 'bboxes_p_net.h5')
+    landmarks_dataset_path = os.path.join(dataset_dir, 'landmarks_p_net.h5')
     images_x, labels_y, bboxes_y, landmarks_y = load_dataset(label_dataset_path, bboxes_dataset_path,
                                                              landmarks_dataset_path, im_size=NET_SIZE['p_net'])
 

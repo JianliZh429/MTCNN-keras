@@ -12,7 +12,7 @@ class Detector:
                  stride=2,
                  min_face_size=24,
                  threshold=None,
-                 scale_factor=0.7,
+                 scale_factor=0.5,
                  mode=3):
 
         assert mode in [1, 2, 3]
@@ -21,7 +21,7 @@ class Detector:
         self.slide_window = slide_window
         self.stride = stride
         self.min_face_size = min_face_size
-        self.threshold = [0.9, 0.7, 0.7] if threshold is None else threshold
+        self.threshold = [0.3, 0.7, 0.7] if threshold is None else threshold
         self.scale_factor = scale_factor
 
         self.p_net = None
@@ -103,8 +103,8 @@ class Detector:
             if boxes.size == 0:
                 continue
 
-            # keep = py_nms(boxes[:, :5], 0.1, 'union')
-            keep = py_nms2(boxes[:, :5], 0.1)
+            keep = py_nms(boxes[:, :5], 0.5, 'union')
+            # keep = py_nms2(boxes[:, :5], 0.1)
             boxes = boxes[keep]
             all_boxes.append(boxes)
 
@@ -202,7 +202,7 @@ class Detector:
     def refine_bboxes(all_boxes):
         all_boxes = np.vstack(all_boxes)
         # merge the detection from first stage
-        keep = py_nms(all_boxes[:, 0:5], 0.3, 'union')
+        keep = py_nms(all_boxes[:, 0:5], 0.7, 'union')
         # keep = py_nms2(all_boxes[:, :5], 0.7)
         all_boxes = all_boxes[keep]
         boxes = all_boxes[:, :5]
