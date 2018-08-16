@@ -80,7 +80,12 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
     labels = []
     bboxes = []
 
-    part_stay = np.random.choice(len(part), size=200000, replace=False)
+    pos_len = len(pos)
+    part_len = len(part)
+    if part_len > pos_len:
+        part_stay = np.random.choice(len(part), size=pos_len, replace=False)
+    else:
+        part_stay = np.random.choice(len(part), size=part_len, replace=False)
 
     bar = Bar('Create bbox dataset', max=len(pos) + len(part_stay))
     for line in pos:
@@ -128,9 +133,12 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
 def create_label_dataset(net_name, neg, pos, target_size, out_dir):
     ims = []
     labels = []
-
-    neg_stay = np.random.choice(len(neg), size=600000, replace=False)
-
+    neg_len = len(neg)
+    pos_len = len(pos)
+    if neg_len > (pos_len * 3):
+        neg_stay = np.random.choice(len(neg), size=pos_len * 3, replace=False)
+    else:
+        neg_stay = np.random.choice(len(neg), size=neg_len, replace=False)
     bar = Bar('Create label dataset', max=len(pos) + len(neg_stay))
     for line in pos:
         bar.next()

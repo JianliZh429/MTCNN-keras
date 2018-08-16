@@ -122,8 +122,8 @@ def main(args):
             for i in range(20):
                 size = npr.randint(int(min(w, h) * 0.8), np.ceil(1.25 * max(w, h)))
 
-                delta_x = npr.randint(-w * 0.2, w * 0.2)
-                delta_y = npr.randint(-h * 0.2, h * 0.2)
+                delta_x = npr.randint(int(-w * 0.2), w * 0.2)
+                delta_y = npr.randint(int(-h * 0.2), h * 0.2)
 
                 nx1 = int(max(x1 + w / 2 + delta_x - size / 2, 0))
                 ny1 = int(max(y1 + h / 2 + delta_y - size / 2, 0))

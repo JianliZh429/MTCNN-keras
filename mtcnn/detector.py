@@ -1,8 +1,9 @@
 import cv2
 import numpy as np
+from progress.bar import Bar
 
 from mtcnn import p_net, o_net, r_net
-from .utils import load_weights, process_image, generate_bbox, py_nms, bbox_2_square, pad, calibrate_bbox
+from .utils import load_weights, process_image, generate_bbox, py_nms, py_nms2, bbox_2_square, pad, calibrate_bbox
 
 
 class Detector:
@@ -11,7 +12,7 @@ class Detector:
                  stride=2,
                  min_face_size=24,
                  threshold=None,
-                 scale_factor=0.79,
+                 scale_factor=0.7,
                  mode=3):
 
         assert mode in [1, 2, 3]
@@ -20,7 +21,7 @@ class Detector:
         self.slide_window = slide_window
         self.stride = stride
         self.min_face_size = min_face_size
-        self.threshold = [0.6, 0.7, 0.7] if threshold is None else threshold
+        self.threshold = [0.9, 0.7, 0.7] if threshold is None else threshold
         self.scale_factor = scale_factor
 
         self.p_net = None
@@ -40,26 +41,31 @@ class Detector:
             self.o_net = o_net()
             self.o_net.load_weights(o_weights)
 
-    def predict(self, np_images):
+    def predict(self, np_images, verbose=False):
 
         if not self.slide_window:
             all_boxes = []  # save each image's bboxes
             landmarks = []
+            bar = None
+            if verbose:
+                bar = Bar('Detecting...', max=len(np_images))
             for im in np_images:
+                if bar:
+                    bar.next()
                 boxes, boxes_c, landmark = self.predict_with_p_net(im)
                 if boxes_c is None:
                     print("boxes_c is None...")
                     all_boxes.append(np.array([]))
                     landmarks.append(np.array([]))
                     continue
-                if self.r_net:
-                    boxes, boxes_c, landmark = self.predict_with_o_net(im, boxes_c)
+                if self.r_net is not None:
+                    boxes, boxes_c, landmark = self.predict_with_r_net(im, boxes_c)
                     if boxes_c is None:
                         print("boxes_c is None...")
                         all_boxes.append(np.array([]))
                         landmarks.append(np.array([]))
                         continue
-                if self.o_net:
+                if self.o_net is not None:
                     boxes, boxes_c, landmark = self.predict_with_o_net(im, boxes_c)
                     if boxes_c is None:
                         print("boxes_c is None...")
@@ -69,6 +75,8 @@ class Detector:
 
                 all_boxes.append(boxes_c)
                 landmarks.append(landmark)
+            if bar:
+                bar.finish()
             return all_boxes, landmarks
         else:
             raise NotImplementedError('Not implemented yet')
@@ -82,10 +90,9 @@ class Detector:
         all_boxes = []
         while min(current_height, current_width) > 12:
             inputs = np.array([im_resized])
-            print('inputs shape: {}'.format(inputs.shape))
             labels, bboxes, landmarks = self.p_net.predict(inputs)
-            labels = np.squeeze(labels)
-            bboxes = np.squeeze(bboxes)
+            labels = labels[0]
+            bboxes = bboxes[0]
 
             boxes = generate_bbox(labels[:, :, 1], bboxes, current_scale, self.threshold[0])
 
@@ -96,7 +103,8 @@ class Detector:
             if boxes.size == 0:
                 continue
 
-            keep = py_nms(boxes[:, :5], 0.5, 'union')
+            # keep = py_nms(boxes[:, :5], 0.1, 'union')
+            keep = py_nms2(boxes[:, :5], 0.1)
             boxes = boxes[keep]
             all_boxes.append(boxes)
 
@@ -184,8 +192,8 @@ class Detector:
         landmark[:, 1::2] = (np.tile(h, (5, 1)) * landmark[:, 1::2].T + np.tile(boxes[:, 1], (5, 1)) - 1).T
         boxes_c = calibrate_bbox(boxes, reg)
 
-        boxes = boxes[py_nms(boxes, 0.6, "Minimum")]
-        keep = py_nms(boxes_c, 0.6, "Minimum")
+        boxes = boxes[py_nms(boxes, 0.6, "minimum")]
+        keep = py_nms(boxes_c, 0.6, "minimum")
         boxes_c = boxes_c[keep]
         landmark = landmark[keep]
         return boxes, boxes_c, landmark
@@ -194,7 +202,8 @@ class Detector:
     def refine_bboxes(all_boxes):
         all_boxes = np.vstack(all_boxes)
         # merge the detection from first stage
-        keep = py_nms(all_boxes[:, 0:5], 0.7, 'union')
+        keep = py_nms(all_boxes[:, 0:5], 0.3, 'union')
+        # keep = py_nms2(all_boxes[:, :5], 0.7)
         all_boxes = all_boxes[keep]
         boxes = all_boxes[:, :5]
         bbw = all_boxes[:, 2] - all_boxes[:, 0] + 1

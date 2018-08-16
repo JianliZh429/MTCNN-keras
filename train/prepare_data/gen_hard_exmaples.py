@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from progress.bar import Bar
 
-from detector import Detector
+from mtcnn.detector import Detector
 from train.config import NET_SIZE, NET_NAMES
 from train.utils import bbox_2_square, iou
 
@@ -130,15 +130,24 @@ def main(args):
     assert net_name in NET_NAMES
     dataset = load_widerface_dataset(images_dir, annotation_file)
 
-    detector = Detector(weight_dir='', mode=1)
-    labels, bboxes, landmarks = detector.predict(dataset['images'])
+    detector = Detector(weight_dir=args.weights, mode=1)
+    length = len(dataset['images'])
+    bar = Bar(message='Load to np images...', max=length)
+    np_images = []
+    for img in dataset['images']:
+        bar.next()
+        im = cv2.imread(img)
+        np_images.append(im)
+    bar.finish()
+
+    print('Detecting...')
+    bboxes, landmarks = detector.predict(np_images, verbose=True)
 
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
     detections_path = os.path.join(out_dir, 'detections.pkl')
     with open(detections_path, 'wb') as f:
         pickle.dump({
-            'labels': labels,
             'bboxes': bboxes,
             'landmarks': landmarks
         }, f)
@@ -151,6 +160,7 @@ def parse_arguments(argv):
 
     parser.add_argument('net_name', type=str, help='The specific net, p_net, r_net, or o_net')
     parser.add_argument('wider_face_dir', type=str, help='Directory for WIDER_FACE images')
+    parser.add_argument('--weights', type=str, help='Weights')
     parser.add_argument('--annotation_file', type=str, help='WIDER_FACE Annotation file path for train data')
     parser.add_argument('--out_dir', type=str, default='.', help='Output dir to save generated dataset')
     return parser.parse_args(argv)
