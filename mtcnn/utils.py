@@ -1,7 +1,21 @@
 import glob
+import time
 
 import cv2
 import numpy as np
+
+from log import logger
+
+
+def time_spent(func):
+    def timed(*args, **kwargs):
+        st = time.time()
+        result = func(*args, **kwargs)
+        spent = time.time() - st
+        logger.debug('{} Time spent: {}'.format(func.func_name, spent))
+        return result
+
+    return timed
 
 
 def load_weights(weights_dir):
@@ -29,8 +43,7 @@ def process_image(img, scale):
     height, width, channels = img.shape
     new_height = int(height * scale)  # resized new height
     new_width = int(width * scale)  # resized new width
-    new_dim = (new_width, new_height)
-    img_resized = cv2.resize(img, new_dim, interpolation=cv2.INTER_LINEAR)  # resized image
+    img_resized = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)  # resized image
     img_resized = (img_resized - 127.5) / 128
     return img_resized
 
@@ -120,6 +133,7 @@ def py_nms2(bboxes, threshold):
     return keep
 
 
+@time_spent
 def py_nms(bboxes, thresh, mode="union"):
     """
     greedily select boxes with high confidence

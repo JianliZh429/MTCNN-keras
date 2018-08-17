@@ -6,7 +6,7 @@ import numpy as np
 from keras.optimizers import Adam
 
 from mtcnn import o_net
-from train.config import NET_SIZE
+from train.constants import NET_SIZE
 from train.data_loader import load_dataset, DataGenerator
 from train.train_helper import create_callbacks_model_file, loss_func, metric_acc
 
