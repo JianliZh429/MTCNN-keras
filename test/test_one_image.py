@@ -7,7 +7,7 @@ from mtcnn.detector import Detector
 
 
 def main(weight_dir, image_file):
-    detector = Detector(weight_dir=weight_dir, mode=3, min_face_size=24)
+    detector = Detector(weight_dir=weight_dir, mode=1, min_face_size=24)
     im = cv2.imread(image_file)
     bboxes, landmarks = detector.predict([im])
     bboxes = bboxes[0]

@@ -1,7 +1,7 @@
 import sys
 from logging import Logger, Formatter, StreamHandler
 
-from config import LOG_LEVEL
+from .config import LOG_LEVEL
 
 logger = Logger('MTCNN')
 logger.setLevel(LOG_LEVEL)

@@ -1,6 +1,7 @@
 import datetime
 import os
 
+import keras.losses as kl
 import tensorflow as tf
 from keras.callbacks import TensorBoard, ModelCheckpoint
 
@@ -73,6 +74,28 @@ def label_ohem(label_true, label_pred):
     return tf.reduce_mean(loss)
 
 
+def label_loss(label_true, label_pred):
+    label = _2_true_labels(label_true)
+    zeros = tf.zeros_like(label)
+    ones = tf.ones_like(label)
+    pos_neg_mask = tf.where(tf.less(label, 0), zeros, ones)
+
+    pos_neg_true = tf.boolean_mask(label, pos_neg_mask)
+    pos_neg_pred = tf.boolean_mask(label_pred, pos_neg_mask)
+
+    # num_row = tf.to_int32(tf.shape(pos_neg_true)[0])
+    # tf.zeros((num_row, 2), dtype=tf.float32)
+
+    def func(x):
+        return tf.case({tf.equal(x, 0): lambda: tf.constant([1, 0], dtype=tf.float32),
+                        tf.equal(x, 1): lambda: tf.constant([0, 1], dtype=tf.float32)},
+                       default=lambda: tf.constant([1, 0], dtype=tf.float32))
+
+    pos_neg_gt = tf.map_fn(func, pos_neg_true)
+
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=pos_neg_gt, logits=pos_neg_pred))
+
+
 def bbox_ohem(label_true, bbox_true, bbox_pred):
     label = _2_true_labels(label_true)
 
@@ -93,6 +116,18 @@ def bbox_ohem(label_true, bbox_true, bbox_pred):
     return tf.reduce_mean(square_error)
 
 
+def bbox_loss(label_true, bbox_true, bbox_pred):
+    label = _2_true_labels(label_true)
+    zeros = tf.zeros_like(label)
+    ones = tf.ones_like(label)
+    mask = tf.where(tf.equal(tf.abs(label), 1), ones, zeros)
+
+    bbox_gt = tf.boolean_mask(bbox_true, mask)
+    bbox_ot = tf.boolean_mask(bbox_pred, mask)
+
+    return tf.reduce_mean(tf.squared_difference(bbox_ot, bbox_gt[1]))
+
+
 def landmark_ohem(label_true, landmark_true, landmark_pred):
     label = _2_true_labels(label_true)
 
@@ -110,6 +145,17 @@ def landmark_ohem(label_true, landmark_true, landmark_pred):
     return tf.reduce_mean(square_error)
 
 
+def landmark_loss(label_true, landmark_true, landmark_pred):
+    label = _2_true_labels(label_true)
+    zeros = tf.zeros_like(label)
+    ones = tf.ones_like(label)
+    mask = tf.where(tf.equal(label, -2), ones, zeros)
+
+    landmark_gt = tf.boolean_mask(landmark_true, mask)
+    landmark_ot = tf.boolean_mask(landmark_pred, mask)
+    return tf.reduce_mean(tf.squared_difference(landmark_ot, landmark_gt))
+
+
 def loss_func(y_true, y_pred):
     labels_true = y_true[:, :2]
     bbox_true = y_true[:, 2:6]
@@ -119,11 +165,14 @@ def loss_func(y_true, y_pred):
     bbox_pred = y_pred[:, 2:6]
     landmark_pred = y_pred[:, 6:]
 
-    label_loss = label_ohem(labels_true, labels_pred)
-    bbox_loss = bbox_ohem(labels_true, bbox_true, bbox_pred)
-    landmark_loss = landmark_ohem(labels_true, landmark_true, landmark_pred)
+    # loss_label = label_ohem(labels_true, labels_pred)
+    loss_label = label_loss(labels_true, labels_pred)
+    # loss_bbox = bbox_ohem(labels_true, bbox_true, bbox_pred)
+    loss_bbox = bbox_loss(labels_true, bbox_true, bbox_pred)
+    # loss_landmark = landmark_ohem(labels_true, landmark_true, landmark_pred)
+    loss_landmark = landmark_loss(labels_true, landmark_true, landmark_pred)
 
-    return label_loss + bbox_loss * 0.5 + landmark_loss * 0.5
+    return loss_label + loss_bbox * 0.5 + loss_landmark * 0.5
 
 
 def metric_acc(y_true, y_pred):

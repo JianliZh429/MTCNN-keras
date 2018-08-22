@@ -8,7 +8,7 @@ import numpy as np
 from progress.bar import Bar
 
 import train.h5py_utils as h5utils
-from train.config import NET_SIZE
+from train.constants import NET_SIZE
 from train.utils import resize
 
 
@@ -92,7 +92,8 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
         bar.next()
 
         words = line.split()
-        image_file_name = words[0] + '.jpg'
+        image_file_name = words[0]
+        # image_file_name = words[0] + '.jpg'
         im = cv2.imread(image_file_name)
         im = resize(im, target_size)
         im = im.astype('uint8')
@@ -108,7 +109,8 @@ def create_bbox_dataset(net_name, part, pos, target_size, out_dir):
 
         line = part[i]
         words = line.split()
-        image_file_name = words[0] + '.jpg'
+        # image_file_name = words[0] + '.jpg'
+        image_file_name = words[0]
         im = cv2.imread(image_file_name)
         resize(im, target_size=target_size)
         im = im.astype('uint8')
@@ -143,7 +145,8 @@ def create_label_dataset(net_name, neg, pos, target_size, out_dir):
     for line in pos:
         bar.next()
         words = line.split()
-        image_file_name = words[0] + '.jpg'
+        image_file_name = words[0]
+        # image_file_name = words[0] + '.jpg'
         im = cv2.imread(image_file_name)
         im = resize(im, target_size=target_size)
         im = im.astype(np.int8)
@@ -155,7 +158,8 @@ def create_label_dataset(net_name, neg, pos, target_size, out_dir):
 
         line = neg[i]
         words = line.split()
-        image_file_name = words[0] + '.jpg'
+        image_file_name = words[0]
+        # image_file_name = words[0] + '.jpg'
 
         im = cv2.imread(image_file_name)
         im = resize(im, target_size=target_size)

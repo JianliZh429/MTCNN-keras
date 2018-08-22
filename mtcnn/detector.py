@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from progress.bar import Bar
 
-from log import logger
 from mtcnn import p_net, o_net, r_net
+from .log import logger
 from .utils import load_weights, process_image, generate_bbox, py_nms, bbox_2_square, pad, calibrate_bbox
 
 

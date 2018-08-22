@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser
 
 import numpy as np
-from keras.optimizers import Adam
+from keras.optimizers import Adam, SGD
 
 from mtcnn import p_net
 from train.constants import NET_SIZE
@@ -42,13 +42,13 @@ def train_all_in_one(dataset_dir, batch_size, epochs, learning_rate, weights_fil
                                                              landmarks_dataset_path, im_size=NET_SIZE['p_net'])
 
     callbacks, model_file = create_callbacks_model_file('p_net', epochs)
-    _p_net = train_p(images_x, labels_y, bboxes_y, landmarks_y, batch_size, initial_epoch=0, epochs=epochs,
-                     lr=learning_rate, callbacks=callbacks, weights_file=weights_file)
+    _p_net = train_with_generator(images_x, labels_y, bboxes_y, landmarks_y, batch_size, epochs=epochs,
+                                  lr=learning_rate, callbacks=callbacks, weights_file=weights_file)
 
     _p_net.save_weights(model_file)
 
 
-def train_with_generator(inputs_image, labels, bboxes, landmarks, batch_size, initial_epoch=0, epochs=1000, lr=0.001,
+def train_with_generator(inputs_image, labels, bboxes, landmarks, batch_size, epochs=1000, lr=0.001,
                          callbacks=None, weights_file=None):
     y = np.concatenate((labels, bboxes, landmarks), axis=1)
     _p_net = p_net(training=True)
@@ -56,6 +56,7 @@ def train_with_generator(inputs_image, labels, bboxes, landmarks, batch_size, in
     if weights_file is not None:
         _p_net.load_weights(weights_file)
     optimizer = Adam(lr=lr)
+    # optimizer = SGD(lr=lr, momentum=0.9, decay=lr / 10., nesterov=True)
     _p_net.compile(optimizer, loss=loss_func, metrics=[metric_acc])
 
     length = len(inputs_image)
@@ -68,7 +69,10 @@ def train_with_generator(inputs_image, labels, bboxes, landmarks, batch_size, in
             for i in indices:
                 x_train.append(inputs_image[i])
                 y_train.append(y[i])
-
+            x_train = np.array(x_train)
+            y_train = np.array(y_train)
+            # print('::::::::', x_train.shape)
+            # print('::::::::', y_train.shape)
             yield x_train, y_train
 
     steps_per_epoch = len(inputs_image) / batch_size
@@ -85,8 +89,8 @@ if __name__ == '__main__':
     parser.add_argument('dataset', type=str, help='Folder of training data')
     parser.add_argument('--batch_size', type=int, default=1024, help='Batch size of training')
     parser.add_argument('--epochs', type=int, default=30, help='Epochs to train')
-    parser.add_argument('--learning_rate', type=float, default=0.0001, help='Learning rate while training')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate while training')
     parser.add_argument('--weights', type=str, default=None, help='Init weights to load')
     args = parser.parse_args(sys.argv[1:])
 
-    train_all_in_one(args.dataset, args.batch_size, args.epochs, args.learning_rate)
+    train_all_in_one(args.dataset, args.batch_size, args.epochs, args.lr)

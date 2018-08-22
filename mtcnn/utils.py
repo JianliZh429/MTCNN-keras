@@ -4,7 +4,7 @@ import time
 import cv2
 import numpy as np
 
-from log import logger
+from .log import logger
 
 
 def time_spent(func):
@@ -12,7 +12,7 @@ def time_spent(func):
         st = time.time()
         result = func(*args, **kwargs)
         spent = time.time() - st
-        logger.debug('{} Time spent: {}'.format(func.func_name, spent))
+        logger.debug('{} Time spent: {}'.format(func.__name__, spent))
         return result
 
     return timed
